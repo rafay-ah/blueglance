@@ -21,6 +21,8 @@ const DESKTOP_APP_IDS = new Set(['com.rastersoft.ding', 'com.desktop.ding']);
 const DRAG_THRESHOLD = 6;
 const DEFAULT_MARGIN = [40, 28];
 const SHORT_COMPONENT = {left: 'L', right: 'R', case: 'Case'};
+// ClutterActor::child-added only exists since GNOME 46; 45 has ClutterContainer::actor-added.
+const CHILD_ADDED = GObject.signal_lookup('child-added', Clutter.Actor.$gtype) ? 'child-added' : 'actor-added';
 
 function isDesktopWindow(win) {
     if (!win)
@@ -99,19 +101,28 @@ class DesktopWidget extends St.BoxLayout {
         this._grab = null;
         this._timeouts = new Set();
 
-        this._buildMenu();
-
-        global.window_group.add_child(this);
         this._signals = [
             [global.display, global.display.connect('restacked', () => this._ensureStacking())],
             [global.display, global.display.connect('window-created', () => this._queueStackCheck())],
-            [global.window_group, global.window_group.connect('child-added', () => this._queueStackCheck())],
+            [global.window_group, global.window_group.connect(CHILD_ADDED, () => this._queueStackCheck())],
             [global.workspace_manager,
                 global.workspace_manager.connect('active-workspace-changed', () => this._queueStackCheck(450))],
             [Main.layoutManager, Main.layoutManager.connect('monitors-changed', () => this._restorePosition())],
         ];
-        this._ensureStacking();
         this.connect('destroy', () => this._onDestroy());
+        // Hidden (overview, lock screen, widget switched off): drop any drag
+        // in progress and the context menu.
+        this.connect('notify::mapped', () => {
+            if (!this.mapped) {
+                this._endDrag();
+                if (this._menu?.isOpen)
+                    this._menu.close();
+            }
+        });
+
+        this._buildMenu();
+        global.window_group.add_child(this);
+        this._ensureStacking();
     }
 
     // ---- stacking ---------------------------------------------------------
@@ -199,7 +210,9 @@ class DesktopWidget extends St.BoxLayout {
         if (!this._placed || relayout || JSON.stringify(position) !== JSON.stringify(this._position)) {
             this._position = position;
             this._placed = true;
-            // Wait for the new layout to be allocated, then keep it on its monitor.
+            // Preferred sizes don't need an allocation, so place it before the
+            // next frame; re-check once the new layout has been allocated.
+            this._restorePosition();
             this._queueRestore();
         }
     }
@@ -393,6 +406,8 @@ class DesktopWidget extends St.BoxLayout {
 
     // ---- input --------------------------------------------------------------
     vfunc_button_press_event(event) {
+        // A drag whose release we never saw (it went to a menu or modal on top).
+        this._endDrag();
         const button = event.get_button();
         if (button === Clutter.BUTTON_SECONDARY) {
             this._menu.toggle();
@@ -409,6 +424,10 @@ class DesktopWidget extends St.BoxLayout {
     vfunc_motion_event(event) {
         if (!this._press)
             return Clutter.EVENT_PROPAGATE;
+        if (!(event.get_state() & Clutter.ModifierType.BUTTON1_MASK)) {
+            this._endDrag();
+            return Clutter.EVENT_PROPAGATE;
+        }
         const [x, y] = event.get_coords();
         const dx = x - this._press.x;
         const dy = y - this._press.y;
@@ -427,12 +446,8 @@ class DesktopWidget extends St.BoxLayout {
             return Clutter.EVENT_PROPAGATE;
         const moved = this._press.moved;
         this._endDrag();
-        if (moved) {
-            this._restoreClamp();
-            this._savePosition();
-        } else {
+        if (!moved)
             this._client.showWindow();
-        }
         return Clutter.EVENT_STOP;
     }
 
@@ -445,15 +460,22 @@ class DesktopWidget extends St.BoxLayout {
     }
 
     _endDrag() {
+        const moved = this._press?.moved;
         this._press = null;
         this.remove_style_pseudo_class('dragging');
         if (this._grab) {
             this._grab.dismiss();
             this._grab = null;
         }
+        if (moved) {
+            // Stays where it was dropped, even when the release went elsewhere.
+            this._restoreClamp();
+            this._savePosition();
+        }
     }
 
     _onDestroy() {
+        this._press = null;
         this._endDrag();
         for (const id of this._timeouts)
             GLib.source_remove(id);

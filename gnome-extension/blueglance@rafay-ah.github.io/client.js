@@ -13,6 +13,45 @@ const IFACE = 'io.github.rafay_ah.BlueGlance1';
 const PRESENCE_NAME = 'io.github.rafay_ah.BlueGlance.ShellExtension';
 export const DESKTOP_ID = 'io.github.rafay_ah.BlueGlance.desktop';
 
+function sanitizeLevel(value) {
+    return Number.isFinite(value) ? Math.max(0, Math.min(100, Math.round(value))) : null;
+}
+
+function sanitizeDevice(device) {
+    return {
+        ...device,
+        name: String(device.name ?? ''),
+        kind: String(device.kind ?? 'other'),
+        kindLabel: String(device.kindLabel ?? ''),
+        level: sanitizeLevel(device.level),
+        charging: Boolean(device.charging),
+        components: (Array.isArray(device.components) ? device.components : [])
+            .filter(c => c && typeof c === 'object')
+            .map(c => ({
+                key: String(c.key ?? ''),
+                label: String(c.label ?? ''),
+                level: sanitizeLevel(c.level),
+                charging: Boolean(c.charging),
+            })),
+    };
+}
+
+// Never trust the shape of the JSON: a missing field must not leave the
+// widget or the menu half-built.
+export function sanitizeState(state) {
+    if (!state || typeof state !== 'object')
+        return null;
+    const devices = Array.isArray(state.devices) ? state.devices : [];
+    return {
+        ...state,
+        devices: devices.filter(d => d && typeof d === 'object' && typeof d.id === 'string').map(sanitizeDevice),
+        lowThreshold: Number.isFinite(state.lowThreshold) ? state.lowThreshold : 20,
+        widget: state.widget && typeof state.widget === 'object' ? state.widget : {},
+        indicator: state.indicator && typeof state.indicator === 'object' ? state.indicator : {},
+        bluetooth: state.bluetooth && typeof state.bluetooth === 'object' ? state.bluetooth : {},
+    };
+}
+
 export class BlueGlanceClient {
     constructor(onState) {
         this._onState = onState;
@@ -55,7 +94,7 @@ export class BlueGlanceClient {
             console.warn(`BlueGlance: invalid state from app: ${e.message}`);
             return;
         }
-        this._onState(state);
+        this._onState(sanitizeState(state));
     }
 
     _call(method, params, callback = null) {

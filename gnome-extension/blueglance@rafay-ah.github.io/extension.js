@@ -15,6 +15,7 @@ export default class BlueGlanceExtension extends Extension {
     enable() {
         this._state = null;
         this._widget = null;
+        this._widgetFailed = false;
         this._indicator = null;
         this._handlers = [];
         this._client = new BlueGlanceClient(state => {
@@ -31,6 +32,11 @@ export default class BlueGlanceExtension extends Extension {
         }
     }
 
+    // Runs in the unlock-dialog session mode too, so that it keeps owning its
+    // D-Bus presence name while the screen is locked. Otherwise the BlueGlance
+    // app would put up its own tray icon on every lock and remove it again on
+    // unlock. Nothing is shown on the lock screen: _sync() hides the widget and
+    // removes the top bar menu while the session is locked.
     disable() {
         for (const [obj, id] of this._handlers)
             obj.disconnect(id);
@@ -57,11 +63,24 @@ export default class BlueGlanceExtension extends Extension {
         const state = this._state;
         const usable = state && state.ready && !Main.sessionMode.isLocked && !Main.layoutManager._startingUp;
 
-        if (usable && state.widget?.enabled) {
-            this._widget ??= new DesktopWidget(this.path, this._client);
-            this._widget.setState(state, this._widgetTheme(state));
+        if (usable && state.widget?.enabled && !this._widgetFailed) {
+            // Created once and then only hidden, so it isn't rebuilt on every
+            // lock or app restart. Failures must not take the top bar menu down.
+            try {
+                this._widget ??= new DesktopWidget(this.path, this._client);
+            } catch (e) {
+                console.error(`BlueGlance: cannot create the desktop widget: ${e.message}`);
+                this._widgetFailed = true;
+            }
+            try {
+                this._widget?.setState(state, this._widgetTheme(state));
+                this._widget?.show();
+            } catch (e) {
+                console.error(`BlueGlance: cannot update the desktop widget: ${e.message}`);
+                this._destroyWidget();
+            }
         } else {
-            this._destroyWidget();
+            this._widget?.hide();
         }
 
         if (usable && state.indicator?.enabled !== false) {

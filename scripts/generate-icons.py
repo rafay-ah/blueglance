@@ -271,10 +271,16 @@ def svg(geometry) -> str:
     )
 
 
+# Only the app uses these; extensions.gnome.org rejects unused files.
+APP_ONLY = {"blueglance-bluetooth-disabled-symbolic", "blueglance-pin-symbolic"}
+
+
 def main() -> None:
     for out_dir in OUT_DIRS:
         os.makedirs(out_dir, exist_ok=True)
         for name, factory in ICONS.items():
+            if name in APP_ONLY and out_dir != OUT_DIRS[0]:
+                continue
             with open(os.path.join(out_dir, f"{name}.svg"), "w", encoding="utf-8") as fh:
                 fh.write(svg(factory()))
     # The app's symbolic icon: installed into hicolor, and bundled next to the
