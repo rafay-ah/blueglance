@@ -146,7 +146,8 @@ class WidgetView(Gtk.Box):
         child = self.get_first_child()
         while child is not None:
             nxt = child.get_next_sibling()
-            self.remove(child)
+            if not isinstance(child, Gtk.Popover):  # keep context menus attached
+                self.remove(child)
             child = nxt
         self._slots.clear()
 

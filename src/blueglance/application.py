@@ -301,6 +301,14 @@ class BlueGlanceApplication(Adw.Application):
         )
         about.present(self.window)
 
+    def show_device(self, device_id: str) -> None:
+        from .ui.details import DeviceDetailsDialog
+
+        self.activate()
+        device = self.manager.find(device_id)
+        if device is not None and self.window is not None:
+            DeviceDetailsDialog(self, device).present(self.window)
+
     def show_headset_battery_help(self) -> None:
         from .ui.troubleshoot import HeadsetBatteryDialog
 

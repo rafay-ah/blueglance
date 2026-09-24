@@ -237,6 +237,13 @@ class BlueZProvider(Provider):
             return None
         return any(BATTERY_PROVIDER_MANAGER_IFACE in self._objects[p] for p in adapters)
 
+    def connected_device_properties(self) -> list[dict]:
+        return [
+            dict(ifaces[DEVICE_IFACE])
+            for ifaces in self._objects.values()
+            if DEVICE_IFACE in ifaces and ifaces[DEVICE_IFACE].get("Connected")
+        ]
+
     def device_properties(self, address: str) -> dict | None:
         for path, ifaces in self._objects.items():
             dev = ifaces.get(DEVICE_IFACE)
