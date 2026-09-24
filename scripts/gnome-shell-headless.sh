@@ -89,8 +89,9 @@ shell_eval() {
 shell_eval "Main.overview.hide(); Main.messageTray._bannerBin?.hide(); true" >/dev/null || true
 sleep 1
 
-BLUEGLANCE_DEMO=1 BLUEGLANCE_DEMO_STATIC=1 BLUEGLANCE_DEMO_CONFIG=persist GTK_A11Y=none \
-    PYTHONPATH="$ROOT/src" "$PYTHON" -m blueglance --background >"$WORK/app.log" 2>&1 &
+BLUEGLANCE_DEMO=1 BLUEGLANCE_DEMO_STATIC=1 BLUEGLANCE_DEMO_CONFIG=persist GTK_A11Y=none ADW_DEBUG_COLOR_SCHEME="prefer-$THEME" \
+    PYTHONPATH="$ROOT/src" "$PYTHON" -m blueglance "$([ -n "${APP_WINDOW:-}" ] && echo --demo || echo --background)" \
+    >"$WORK/app.log" 2>&1 &
 APP_PID=$!
 sleep 6
 

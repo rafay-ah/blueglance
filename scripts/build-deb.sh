@@ -12,11 +12,21 @@ WORK="$(mktemp -d)"
 trap 'rm -rf "$WORK"' EXIT
 PKG="$WORK/pkg"
 
-meson setup "$WORK/build" "$ROOT" --prefix=/usr --sysconfdir=/etc --buildtype=plain \
-    -Dpython=/usr/bin/python3 -Dsystem_autostart=true -Dgnome_extension=true >/dev/null
-grep -q '^#!/usr/bin/python3$' "$WORK/build/src/blueglance" || { echo "bad launcher shebang" >&2; exit 1; }
-meson compile -C "$WORK/build" >/dev/null
-DESTDIR="$PKG" meson install -C "$WORK/build" --no-rebuild >/dev/null
+LOG="$WORK/build.log"
+run() {
+    "$@" >>"$LOG" 2>&1 || { cat "$LOG" >&2; echo "failed: $*" >&2; exit 1; }
+}
+run meson setup "$WORK/build" "$ROOT" --prefix=/usr --sysconfdir=/etc --buildtype=plain \
+    -Dpython=/usr/bin/python3 -Dsystem_autostart=true -Dgnome_extension=true
+run meson compile -C "$WORK/build"
+DESTDIR="$PKG" run meson install -C "$WORK/build" --no-rebuild
+# The launcher must use the distro's interpreter, where PyGObject lives.
+SHEBANG="$(head -n1 "$PKG/usr/bin/blueglance")"
+case "$SHEBANG" in
+    '#!/usr/bin/python3'*) ;;
+    *) echo "unexpected launcher shebang: $SHEBANG" >&2; exit 1 ;;
+esac
+sed -i '1s|.*|#!/usr/bin/python3|' "$PKG/usr/bin/blueglance"
 find "$PKG" -name __pycache__ -prune -exec rm -rf {} +
 
 mkdir -p "$PKG/DEBIAN" "$PKG/usr/share/doc/blueglance"

@@ -33,7 +33,9 @@ if get_option('gnome_extension')
   )
 endif
 
+# Refresh caches on direct installs; distro packages use triggers instead, and
+# minimal build roots may not have these tools at all.
 gnome.post_install(
-  gtk_update_icon_cache: true,
-  update_desktop_database: true,
+  gtk_update_icon_cache: find_program('gtk4-update-icon-cache', 'gtk-update-icon-cache', required: false).found(),
+  update_desktop_database: find_program('update-desktop-database', required: false).found(),
 )
