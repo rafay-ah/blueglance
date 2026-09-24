@@ -32,6 +32,16 @@ jobs:
           mkdir -p dist
           flatpak build-bundle "$FB/repo" dist/BlueGlance.flatpak io.github.rafay_ah.BlueGlance \
             --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: AppStream report
+        if: failure()
+        run: |
+          FB="$RUNNER_TEMP/flatpak"
+          flatpak run --user --filesystem="$RUNNER_TEMP" --command=appstreamcli org.gnome.Sdk//50 \
+            compose --print-report=full --prefix=/ --origin=debug --result-root="$RUNNER_TEMP/as-out" \
+            --components=io.github.rafay_ah.BlueGlance "$FB/build/files" || true
+          flatpak run --user --filesystem="$RUNNER_TEMP" --command=appstreamcli org.gnome.Sdk//50 \
+            validate --no-net --explain "$FB/build/files/share/metainfo/io.github.rafay_ah.BlueGlance.metainfo.xml" || true
+          flatpak run --user --command=appstreamcli org.gnome.Sdk//50 --version || true
       - name: Smoke test
         run: |
           flatpak install --user -y --noninteractive dist/BlueGlance.flatpak
