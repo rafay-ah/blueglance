@@ -23,6 +23,17 @@ jobs:
           # Ubuntu 24.04 blocks unprivileged user namespaces, which bubblewrap needs.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Session bus for sandboxed image loaders
+        # appstreamcli decodes icons with glycin, which spawns its loaders through
+        # flatpak-spawn --sandbox and needs a session bus at $XDG_RUNTIME_DIR/bus.
+        run: |
+          RUNTIME_DIR="/run/user/$(id -u)"
+          sudo mkdir -p "$RUNTIME_DIR"
+          sudo chown "$(id -u):$(id -g)" "$RUNTIME_DIR"
+          chmod 700 "$RUNTIME_DIR"
+          dbus-daemon --session --address="unix:path=$RUNTIME_DIR/bus" --fork
+          echo "XDG_RUNTIME_DIR=$RUNTIME_DIR" >> "$GITHUB_ENV"
+          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=$RUNTIME_DIR/bus" >> "$GITHUB_ENV"
       - name: Build
         run: |
           FB="$RUNNER_TEMP/flatpak"
