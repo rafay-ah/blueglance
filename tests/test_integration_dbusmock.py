@@ -103,6 +103,20 @@ class TestUPower(dbusmock.DBusTestCase):
         finally:
             provider.stop()
 
+    def test_display_device_is_not_a_second_computer(self):
+        self.mock.AddDischargingBattery("mock_BAT", "Mock Battery", 30.0, 1200)
+        provider = UPowerProvider(gio_system_bus())
+        provider.include_system = True
+        provider.start()
+        try:
+            assert wait_for(lambda: provider.reports)
+            # UPower refreshes its composite DisplayDevice whenever a battery changes.
+            self.mock.SetupDisplayDevice(2, 2, 30.0, 40.0, 80.0, 2.5, 3600, 0, True, "battery-good-symbolic", 1)
+            wait_for(lambda: len(provider.reports) > 1, timeout=1.0)
+            assert [r.level for r in provider.reports] == [30]
+        finally:
+            provider.stop()
+
 
 class TestBlueZ(dbusmock.DBusTestCase):
     @classmethod

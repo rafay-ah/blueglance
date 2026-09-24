@@ -189,6 +189,9 @@ class UPowerProvider(Provider):
             self._fetch(path)
 
     def _fetch(self, path: str) -> None:
+        if path.endswith("/DisplayDevice"):
+            return  # UPower's composite "display" battery, not a real device
+
         def done(props, error):
             if error:
                 log.debug("UPower GetAll(%s) failed: %s", path, error.message)
@@ -207,6 +210,8 @@ class UPowerProvider(Provider):
 
     def _on_properties_changed(self, path, _signal, args) -> None:
         _iface, changed, invalidated = args
+        if path.endswith("/DisplayDevice"):
+            return
         props = self._props.get(path)
         if props is None:
             self._fetch(path)

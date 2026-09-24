@@ -103,3 +103,68 @@ def test_connection_state_machine_over_a_socketpair():
     accessory.close()
     assert received == [{0x04: (0x55, 0x02), 0x02: (0x57, 0x02)}]
     assert closed == []
+
+
+def test_gives_up_after_retries_and_ignores_bluez_churn(monkeypatch):
+    """A refusing accessory is retried with backoff, then left alone until it reconnects."""
+    import socket
+    import time
+
+    from gi.repository import GLib, GObject
+
+    from blueglance.devices import airpods
+    from blueglance.models import Report
+
+    monkeypatch.setattr(airpods, "RETRY_DELAYS", (0, 0, 0))
+    attempts = []
+
+    class RefusedConnection(airpods.AapConnection):
+        def _create_socket(self):
+            attempts.append(self.address)
+            ours, peer = socket.socketpair(socket.AF_UNIX, socket.SOCK_SEQPACKET)
+            peer.close()  # hang up like an accessory that refuses AAP
+            ours.setblocking(False)
+            return ours, 0
+
+    monkeypatch.setattr(airpods, "AapConnection", RefusedConnection)
+    address = "AC:90:85:12:34:56"
+    connected = [{"Address": address, "Modalias": "bluetooth:v004Cp2014d0E26", "UUIDs": []}]
+
+    class FakeBlueZ(GObject.Object):
+        __gsignals__ = {"changed": (GObject.SignalFlags.RUN_FIRST, None, ())}
+
+        def connected_device_properties(self):
+            return connected
+
+    def spin(seconds, until=lambda: False):
+        ctx = GLib.MainContext.default()
+        end = time.monotonic() + seconds
+        while time.monotonic() < end and not until():
+            while ctx.iteration(False):
+                pass
+            time.sleep(0.005)
+
+    bluez = FakeBlueZ()
+    provider = airpods.AirPodsProvider(bluez)
+    provider.supported = True  # the fake sockets don't need Bluetooth support in Python
+    provider._reports[address] = Report(source="aap", key=address, level=50)  # stale data from a past session
+    provider.start()
+    try:
+        spin(10, until=lambda: address in provider._given_up)
+        assert len(attempts) == 4  # first try + one per retry delay
+        assert provider.reports == []  # stale levels are dropped, not shown forever
+
+        for _ in range(5):  # e.g. RSSI updates while Bluetooth settings scans
+            bluez.emit("changed")
+            spin(0.05)
+        assert len(attempts) == 4
+
+        connected.clear()  # the buds disconnect and come back: try again
+        bluez.emit("changed")
+        spin(0.05)
+        connected.append({"Address": address, "Modalias": "bluetooth:v004Cp2014d0E26", "UUIDs": []})
+        bluez.emit("changed")
+        spin(0.2)
+        assert len(attempts) == 5
+    finally:
+        provider.stop()

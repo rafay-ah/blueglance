@@ -302,6 +302,9 @@ class AirPodsProvider(Provider):
         self._targets: dict[str, int | None] = {}  # address -> product id
         self._failures: dict[str, int] = {}
         self._retry_sources: dict[str, int] = {}
+        # Accessories that never answered on the AAP channel: leave them alone
+        # until they disconnect (BlueZ "changed" fires constantly).
+        self._given_up: set[str] = set()
         self.supported = hasattr(socket, "AF_BLUETOOTH") and hasattr(socket, "BTPROTO_L2CAP")
 
     @property
@@ -313,6 +316,8 @@ class AirPodsProvider(Provider):
         if value == self._enabled:
             return
         self._enabled = value
+        self._given_up.clear()
+        self._failures.clear()
         if not value:
             self._teardown_all()
             self._reports.clear()
@@ -367,11 +372,13 @@ class AirPodsProvider(Provider):
         for address in list(self._failures):
             if address not in targets:
                 del self._failures[address]
+        self._given_up &= set(targets)  # a reconnect gets a fresh chance
         if stale:
             self._changed()
 
         for address in targets:
-            if address not in self._connections and address not in self._retry_sources:
+            if (address not in self._connections and address not in self._retry_sources
+                    and address not in self._given_up):
                 self._connect(address)
 
     def _connect(self, address: str) -> None:
@@ -383,12 +390,17 @@ class AirPodsProvider(Provider):
     def _on_closed(self, conn: AapConnection, reason: str, got_data: bool) -> None:
         if self._connections.get(conn.address) is conn:
             del self._connections[conn.address]
+        # Without a live channel the left/right/case levels go stale: drop them so
+        # BlueZ/UPower's level shows until (if) the channel comes back.
+        if self._reports.pop(conn.address, None) is not None:
+            self._changed()
         if conn.address not in self._targets or not self._running or not self._enabled:
             return
         failures = 0 if got_data else self._failures.get(conn.address, 0) + 1
         self._failures[conn.address] = failures
         if failures > len(RETRY_DELAYS):
             log.info("AAP: giving up on %s (%s)", conn.address, reason)
+            self._given_up.add(conn.address)
             return
         delay = RETRY_DELAYS[max(0, failures - 1)]
         log.debug("AAP: %s (%s); retrying in %ss", conn.address, reason, delay)

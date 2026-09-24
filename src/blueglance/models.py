@@ -219,6 +219,7 @@ class Device:
             "state": self.state.value,
             "charging": self.charging,
             "connected": self.connected,
+            "address": self.address,
             "coarse": self.coarse,
             "model": self.model,
             "components": [c.to_dict() for c in self.components],
@@ -234,6 +235,7 @@ class Device:
             level=clamp_level(data.get("level")),
             state=_enum_or(ChargeState, data.get("state"), ChargeState.UNKNOWN),
             connected=bool(data.get("connected", False)),
+            address=data.get("address") or None,
             coarse=bool(data.get("coarse", False)),
             model=data.get("model"),
             components=tuple(

@@ -2,6 +2,7 @@ from blueglance.devices.manager import merge_reports
 from blueglance.models import (
     ChargeState,
     Component,
+    Device,
     DeviceKind,
     LevelClass,
     Report,
@@ -94,3 +95,15 @@ def test_relative_time():
     assert format_relative_time(1000, now=1000 + 3 * 3600) == "3 h ago"
     assert format_relative_time(1000, now=1000 + 30 * 3600) == "yesterday"
     assert format_relative_time(1000, now=1000 + 80 * 3600) == "3 days ago"
+
+
+def test_device_round_trips_through_history():
+    device = Device(id="AC:90:85:12:34:56", name="AirPods Pro", kind=DeviceKind.EARBUDS, level=40,
+                    connected=False, address="AC:90:85:12:34:56",
+                    components=(Component("left", "Left", 40), Component("case", "Case", 90, charging=True)),
+                    last_seen=1234)
+    restored = Device.from_dict(device.to_dict())
+    assert restored.address == device.address
+    assert restored.components == device.components
+    assert (restored.name, restored.kind, restored.level) == ("AirPods Pro", DeviceKind.EARBUDS, 40)
+    assert restored.last_seen == 1234

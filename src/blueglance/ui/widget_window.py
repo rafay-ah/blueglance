@@ -82,6 +82,7 @@ class DesktopWidgetWindow(Gtk.Window):
         self._dragging = False
         self._drag_moved = False
         self._layer_margins = [0, 0]
+        self.saving_position = False
 
         self.add_css_class("bg-widget-window")
         self.insert_action_group("app", self.app)
@@ -283,8 +284,13 @@ class DesktopWidgetWindow(Gtk.Window):
         self._dragging = False
         self._drag_moved = False
         if self.mode == "layer" and was_drag:
-            self.config["widget_margin_x"] = self._layer_margins[0]
-            self.config["widget_margin_y"] = self._layer_margins[1]
+            margin_x, margin_y = self._layer_margins
+            self.saving_position = True  # don't let the controller re-apply half-saved margins
+            try:
+                self.config["widget_margin_x"] = margin_x
+                self.config["widget_margin_y"] = margin_y
+            finally:
+                self.saving_position = False
             return
         if not was_drag:
             self.app.activate()
@@ -365,6 +371,8 @@ class WidgetController(GObject.Object):
 
     def _recreate_if_reset(self, key: str) -> None:
         # "Reset position" in Preferences resets these keys; re-place the window.
+        if self.window.saving_position:
+            return
         if self.mode == "layer":
             self.window.apply_layer_position()
         elif self.mode == "x11" and self.config["widget_position"] is None:

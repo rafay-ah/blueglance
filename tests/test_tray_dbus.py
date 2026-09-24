@@ -137,7 +137,13 @@ def test_tray_registers_and_serves_menu():
     toggle = next(c for c in layout[2] if c[1].get("label") == "Show Desktop Widget")
     assert toggle[1]["toggle-state"] == 0
 
+    # Hiding the icon goes Passive first, so hosts that track us by unique
+    # name (Flatpak registers by path) drop it right away.
+    statuses = []
+    watcher_bus.signal_subscribe(None, "org.kde.StatusNotifierItem", "NewStatus", "/StatusNotifierItem", None,
+                                 Gio.DBusSignalFlags.NONE, lambda *a: statuses.append(a[5].unpack()[0]))
     app.config["tray_icon"] = False
     assert tray.item is None
+    assert run_until(ctx, lambda: statuses == ["Passive"])
     tray.stop()
     app.manager.stop()

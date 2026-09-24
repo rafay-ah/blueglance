@@ -281,6 +281,12 @@ class StatusNotifierItem:
             bus, WATCHER_BUS, Gio.BusNameWatcherFlags.NONE, self._on_watcher_appeared, None)
 
     def destroy(self) -> None:
+        # Hosts that track us by unique name (Flatpak registers by object path)
+        # only notice the item vanishing when the process exits; going Passive
+        # first hides the icon right away.
+        if self.status != "Passive":
+            self.status = "Passive"
+            self._emit("NewStatus", GLib.Variant("(s)", ("Passive",)))
         if self._watch_id:
             Gio.bus_unwatch_name(self._watch_id)
             self._watch_id = 0

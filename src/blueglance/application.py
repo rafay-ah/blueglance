@@ -31,6 +31,7 @@ class BlueGlanceApplication(Adw.Application):
         self.window = None
         self.services: dict[str, object] = {}
         self._held = False
+        self._background_launch = False
         self._started = False
 
         self.add_main_option("background", ord("b"), GLib.OptionFlags.NONE, GLib.OptionArg.NONE,
@@ -92,6 +93,10 @@ class BlueGlanceApplication(Adw.Application):
             self._started = True
             self._start_services()
         if background:
+            # Launched at login: keep running even if "Run in Background" is
+            # off, otherwise the app would exit as soon as it started.
+            self._background_launch = True
+            self._apply_background_hold()
             if first:
                 self._first_run_checks(background=True)
             return 0
@@ -254,7 +259,7 @@ class BlueGlanceApplication(Adw.Application):
 
     # -- reactions ----------------------------------------------------------
     def _apply_background_hold(self) -> None:
-        want = bool(self.config["run_in_background"])
+        want = bool(self.config["run_in_background"]) or self._background_launch
         if want and not self._held:
             self.hold()
             self._held = True
