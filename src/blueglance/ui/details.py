@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 
-from gi.repository import Adw, Gtk, Pango
+from gi.repository import Adw, GLib, Gtk, Pango
 
 from .. import icons
 from ..models import Device, classify_level, format_relative_time
@@ -121,10 +121,11 @@ class DeviceDetailsDialog(Adw.Dialog):
             self.components.append(box)
         self.components.set_visible(bool(device.components))
 
-        self.model_row.set_subtitle(device.model or device.kind.label)
-        self.address_row.set_subtitle(device.address or "—")
+        escape = GLib.markup_escape_text  # row subtitles are Pango markup
+        self.model_row.set_subtitle(escape(device.model or device.kind.label))
+        self.address_row.set_subtitle(escape(device.address or "—"))
         self.address_row.set_visible(bool(device.address))
-        self.source_row.set_subtitle(", ".join(SOURCE_NAMES.get(s, s) for s in device.sources) or "—")
+        self.source_row.set_subtitle(escape(", ".join(SOURCE_NAMES.get(s, s) for s in device.sources) or "—"))
         if device.connected:
             self.seen_row.set_subtitle(time.strftime("%H:%M", time.localtime(device.last_seen)))
         else:

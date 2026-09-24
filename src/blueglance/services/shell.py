@@ -79,6 +79,9 @@ class ShellIntegration(GObject.Object):
         self.app = app
         self.relevant = session_info().gnome
         self.active = False
+        # False until we know whether the extension is going to take over, so
+        # the app doesn't flash its own widget/tray at login on GNOME.
+        self.settled = not self.relevant
         self.info: dict = {}
         self.user_extensions_enabled = True
         self._bus: Gio.DBusConnection | None = None
@@ -104,6 +107,7 @@ class ShellIntegration(GObject.Object):
         self._signal_id = self._bus.signal_subscribe(
             SHELL_BUS, EXTENSIONS_IFACE, "ExtensionStateChanged", SHELL_PATH, None,
             Gio.DBusSignalFlags.NONE, self._on_state_changed)
+        GLib.timeout_add_seconds(6, self._settle)  # never wait forever
 
     def stop(self) -> None:
         if self._inactive_source:
@@ -133,10 +137,35 @@ class ShellIntegration(GObject.Object):
         return GLib.SOURCE_REMOVE
 
     def _apply_active(self, active: bool) -> None:
-        if active != self.active:
+        changed = active != self.active or (active and not self.settled)
+        if active:
+            self.settled = True
+        if changed:
             log.info("GNOME Shell extension %s", "connected" if active else "not running")
             self.active = active
             self.emit("changed")
+
+    def _settle(self) -> bool:
+        if not self.settled:
+            self.settled = True
+            self.emit("changed")
+        return GLib.SOURCE_REMOVE
+
+    @property
+    def fallback_allowed(self) -> bool:
+        """May the app show its own widget window instead of the extension's?
+
+        On GNOME only when the extension isn't installed at all (or is broken):
+        a floating window that can't be pinned is worse than a clear hint.
+        """
+        if self.active:
+            return False
+        if not self.relevant:
+            return True
+        if not self.settled:
+            return False
+        status = self.describe()[0]
+        return status in ("missing", "error", "outdated")
 
     def _set_info(self, info: dict) -> None:
         self.info = info
@@ -177,9 +206,15 @@ class ShellIntegration(GObject.Object):
                 info = {}
             self._set_info(info)
 
+        def on_info_and_settle(bus, result):
+            on_info(bus, result)
+            if not self.settled:
+                # Give an auto-enabled extension a moment to come up.
+                GLib.timeout_add(1500, self._settle)
+
         self._bus.call(SHELL_BUS, SHELL_PATH, EXTENSIONS_IFACE, "GetExtensionInfo",
                        GLib.Variant("(s)", (EXTENSION_UUID,)), GLib.VariantType("(a{sv})"),
-                       Gio.DBusCallFlags.NONE, 5000, None, on_info)
+                       Gio.DBusCallFlags.NONE, 5000, None, on_info_and_settle)
 
         def on_prop(bus, result):
             try:

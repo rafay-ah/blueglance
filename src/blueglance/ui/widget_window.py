@@ -374,7 +374,7 @@ class WidgetController(GObject.Object):
 
     def sync(self) -> None:
         shell = self.app.services.get("shell")
-        want = bool(self.config["widget_enabled"]) and not (shell is not None and shell.active)
+        want = bool(self.config["widget_enabled"]) and (shell is None or shell.fallback_allowed)
         if want and self.window is None:
             self.window = DesktopWidgetWindow(self, self.mode)
             self.window.connect("close-request", self._on_window_close_request)

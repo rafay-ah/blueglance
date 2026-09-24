@@ -386,7 +386,9 @@ class TrayController:
 
     def sync(self) -> None:
         shell = self.app.services.get("shell")
-        want = bool(self.config["tray_icon"]) and not (shell is not None and shell.active)
+        # On GNOME the extension's top bar menu replaces the tray icon; until we
+        # know whether it's coming, don't flash an AppIndicator icon.
+        want = bool(self.config["tray_icon"]) and (shell is None or (shell.settled and not shell.active))
         if want and self.item is None and self._bus is not None:
             self.item = StatusNotifierItem(self._bus, self.app.activate)
             self.refresh()

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from gi.repository import Adw, Gio, Gtk
+from gi.repository import Adw, Gio, GLib, Gtk
 
 from .. import APP_NAME, icons
 from ..models import Device
@@ -89,6 +89,9 @@ class MainWindow(Adw.ApplicationWindow):
             if self._shell is not None else 0
         self._banner_action = None
         self.connect("close-request", self._on_close_request)
+        # Don't start with a card focused: the scrolled view would jump to it
+        # and hide the section heading above.
+        self.connect("map", lambda *_: GLib.idle_add(lambda: self.set_focus(None)))
         self.refresh(animate=False)
 
     # -- helpers ------------------------------------------------------------
@@ -219,18 +222,19 @@ class MainWindow(Adw.ApplicationWindow):
             and any(d.hints.get("handsfree") for d in nobattery)
         )
         title, button, action = None, None, None
+        # Keep banner titles short: long ones wrap and overlap the list below.
         if needs_fix:
-            title = "Your headphones can report their battery, but BlueZ has it turned off"
+            title = "Headphone battery reporting is off"
             button, action = "Fix…", "headset"
         elif self._shell is not None and self._shell.relevant and self.app.config["widget_enabled"]:
-            status, text, shell_button = self._shell.describe()
+            status, _text, shell_button = self._shell.describe()
             if status != "active":
                 title = {
-                    "pending": "Log out and back in once to pin the widget to your desktop",
-                    "disabled": "Pin the battery widget to your GNOME desktop",
-                    "missing": "Pin the battery widget to your GNOME desktop",
-                    "blocked": "GNOME extensions are switched off, so the widget can't be pinned",
-                }.get(status, text)
+                    "pending": "Log out and in to pin the widget",
+                    "disabled": "Pin the widget to your desktop",
+                    "missing": "Pin the widget to your desktop",
+                    "blocked": "GNOME extensions are switched off",
+                }.get(status, "The widget extension couldn't load")
                 button, action = shell_button, "shell" if shell_button else None
         self._banner_action = action
         if title:

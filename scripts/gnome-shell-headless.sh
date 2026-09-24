@@ -20,6 +20,7 @@ export HOME="$WORK/home"
 export XDG_RUNTIME_DIR="$WORK/run"
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_DATA_HOME="$HOME/.local/share"
+export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-ubuntu:GNOME}"
 mkdir -p "$XDG_RUNTIME_DIR" "$XDG_DATA_HOME/gnome-shell/extensions" "$XDG_CONFIG_HOME/blueglance"
 chmod 700 "$XDG_RUNTIME_DIR"
 cp -r "$ROOT/gnome-extension/$UUID" "$XDG_DATA_HOME/gnome-shell/extensions/"
@@ -39,7 +40,8 @@ s.write_to_png(sys.argv[1])
 EOF
 
 # Make D-Bus activated services (dconf) see the same HOME as us.
-dbus-update-activation-environment HOME XDG_RUNTIME_DIR XDG_CONFIG_HOME XDG_DATA_HOME 2>/dev/null || true
+dbus-update-activation-environment HOME XDG_RUNTIME_DIR XDG_CONFIG_HOME XDG_DATA_HOME XDG_CURRENT_DESKTOP \
+    2>/dev/null || true
 
 # gnome-shell needs a system bus with logind; give it a private one with mocks.
 SYSBUS_ADDR="$(dbus-daemon --session --print-address --fork --print-pid 3 3>"$WORK/sysbus.pid")"

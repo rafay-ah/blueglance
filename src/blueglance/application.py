@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import signal
 import sys
 
 from gi.repository import Adw, Gdk, Gio, GLib, Gtk
@@ -75,6 +76,10 @@ class BlueGlanceApplication(Adw.Application):
         self.config.connect("changed", self._on_config_changed)
         self.manager.start()
         self._apply_background_hold()
+        # Logging out sends SIGTERM: shut down cleanly so settings and the
+        # remembered devices get saved.
+        for signum in (signal.SIGTERM, signal.SIGHUP):
+            GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signum, self._on_unix_signal)
 
     def do_command_line(self, command_line: Gio.ApplicationCommandLine) -> int:
         options = command_line.get_options_dict()
@@ -133,6 +138,10 @@ class BlueGlanceApplication(Adw.Application):
         if api is not None:
             api.unexport()
         Adw.Application.do_dbus_unregister(self, connection, object_path)
+
+    def _on_unix_signal(self) -> bool:
+        self.quit()
+        return GLib.SOURCE_REMOVE
 
     # -- setup --------------------------------------------------------------
     def _create_providers(self):

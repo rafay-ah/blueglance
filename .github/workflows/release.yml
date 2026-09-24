@@ -70,10 +70,13 @@ jobs:
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
       - name: Build
         run: |
+          # Keep build output outside the source tree (the manifest builds from it).
+          FB="$RUNNER_TEMP/flatpak"
           flatpak-builder --user --install-deps-from=flathub --force-clean --disable-rofiles-fuse \
-            --repo=repo build-dir packaging/flatpak/io.github.rafay_ah.BlueGlance.yml
+            --state-dir="$FB/state" --repo="$FB/repo" "$FB/build" \
+            packaging/flatpak/io.github.rafay_ah.BlueGlance.yml
           mkdir -p dist
-          flatpak build-bundle repo dist/BlueGlance.flatpak io.github.rafay_ah.BlueGlance \
+          flatpak build-bundle "$FB/repo" dist/BlueGlance.flatpak io.github.rafay_ah.BlueGlance \
             --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
       - uses: actions/upload-artifact@v4
         with:

@@ -49,3 +49,9 @@ modules:
     sources:
       - type: dir
         path: ../..
+        skip:
+          - .git
+          - .flatpak-builder
+          - build
+          - builddir
+          - dist

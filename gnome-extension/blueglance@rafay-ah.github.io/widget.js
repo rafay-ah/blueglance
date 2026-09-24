@@ -170,20 +170,22 @@ class DesktopWidget extends St.BoxLayout {
         this.set_style_class_name(`blueglance-widget ${size} ${theme}`);
         this._syncMenu();
 
-        const signature = JSON.stringify([size, shown.map(d => d.id), shown.length ? null : message]);
-        let animate = true;
+        const signature = JSON.stringify([size, theme, shown.map(d => d.id), shown.length ? null : message]);
+        let relayout = false;
         if (signature !== this._signature) {
+            relayout = this._signature === null || JSON.parse(this._signature)[0] !== size ||
+                shown.length !== JSON.parse(this._signature)[2].length;
             this._rebuild(size, shown, message);
             this._signature = signature;
         }
         for (const device of shown)
-            this._updateSlot(this._slots.get(device.id), device, animate);
+            this._updateSlot(this._slots.get(device.id), device, true);
 
         const position = state.widget?.position ?? null;
-        if (!this._placed || JSON.stringify(position) !== JSON.stringify(this._position)) {
+        if (!this._placed || relayout || JSON.stringify(position) !== JSON.stringify(this._position)) {
             this._position = position;
             this._placed = true;
-            // Wait for the new layout to be allocated before clamping to the monitor.
+            // Wait for the new layout to be allocated, then keep it on its monitor.
             this._queueRestore();
         }
     }
