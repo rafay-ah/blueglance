@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4f8ff7"/>
+      <stop offset="1" stop-color="#2459d6"/>
+    </linearGradient>
+    <linearGradient id="edge" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1c46b3"/>
+      <stop offset="1" stop-color="#16398f"/>
+    </linearGradient>
+    <linearGradient id="gauge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#6ff29a"/>
+      <stop offset="1" stop-color="#2fd46a"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- tile with a little thickness, GNOME style -->
+  <rect x="10" y="16" width="108" height="104" rx="28" fill="url(#edge)"/>
+  <rect x="10" y="10" width="108" height="104" rx="28" fill="url(#tile)"/>
+  <rect x="10" y="10" width="108" height="104" rx="28" fill="url(#shine)"/>
+  <rect x="11" y="11" width="106" height="102" rx="27" fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="2"/>
+  <!-- battery gauge -->
+  <circle cx="64" cy="62" r="33" fill="none" stroke="#ffffff" stroke-opacity="0.22" stroke-width="11"/>
+  <path d="M64 29 A33 33 0 1 1 31 62" fill="none" stroke="url(#gauge)" stroke-width="11" stroke-linecap="round"/>
+  <!-- bluetooth rune -->
+  <path d="M54.5 53.5 L73 69.4 L64 77.8 L64 46.2 L73 54.6 L54.5 70.5" fill="none" stroke="#ffffff"
+        stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

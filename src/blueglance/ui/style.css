@@ -1,0 +1,148 @@
+/* BlueGlance stylesheet. Themes are scoped with .dark / .light classes on the
+ * toplevel so the desktop widget can use a different theme than the app. */
+
+/* ---------------------------------------------------------------- colours */
+@define-color bg_green_dark #30d158;
+@define-color bg_green_light #25b343;
+@define-color bg_orange_dark #ff9f0a;
+@define-color bg_orange_light #f08c00;
+@define-color bg_red_dark #ff453a;
+@define-color bg_red_light #e5372c;
+
+.ring-area.level-normal { color: @bg_green_dark; }
+.ring-area.level-low { color: @bg_orange_dark; }
+.ring-area.level-critical { color: @bg_red_dark; }
+.ring-area.level-unknown { color: alpha(currentColor, 0.3); }
+
+.light .ring-area.level-normal { color: @bg_green_light; }
+.light .ring-area.level-low { color: @bg_orange_light; }
+.light .ring-area.level-critical { color: @bg_red_light; }
+
+label.level-low { color: @bg_orange_dark; }
+label.level-critical { color: @bg_red_dark; }
+.light label.level-low { color: @bg_orange_light; }
+.light label.level-critical { color: @bg_red_light; }
+
+.ring-icon { opacity: 0.92; }
+.ring-label { font-weight: 800; }
+
+.charging-badge {
+  background-color: @bg_green_dark;
+  color: #ffffff;
+  border-radius: 999px;
+  box-shadow: 0 0 0 2px @window_bg_color;
+}
+.light .charging-badge { background-color: @bg_green_light; }
+
+.placeholder .ring-area { color: transparent; }
+
+/* ------------------------------------------------------------ main window */
+.blueglance-main .section-title {
+  font-weight: 700;
+  font-size: 0.82em;
+  letter-spacing: 0.06em;
+  opacity: 0.55;
+  margin-left: 6px;
+}
+
+.device-card {
+  padding: 14px 16px;
+  border-radius: 18px;
+}
+.device-card .device-name {
+  font-weight: 700;
+  font-size: 1.06em;
+}
+.device-card .device-subtitle { font-size: 0.9em; }
+.device-card .device-pct {
+  font-weight: 800;
+  font-size: 1.7em;
+  margin-left: 8px;
+}
+.device-card.disconnected .battery-ring,
+.device-card.disconnected .device-pct,
+.device-card.disconnected .component-row { opacity: 0.5; }
+
+.component-chip .component-label {
+  font-weight: 700;
+  font-size: 0.92em;
+}
+.component-chip .component-bolt { color: @bg_green_dark; }
+.light .component-chip .component-bolt { color: @bg_green_light; }
+
+.device-details .details-pct {
+  font-weight: 800;
+  font-size: 2.4em;
+  margin-top: 4px;
+}
+
+/* ----------------------------------------------------------- the widget */
+window.bg-widget-window,
+window.bg-widget-window.background {
+  background: none;
+  box-shadow: none;
+}
+
+.bg-widget {
+  border-radius: 26px;
+  padding: 16px 18px;
+}
+.bg-widget.dark {
+  background-color: rgba(30, 30, 33, 0.9);
+  color: #f5f5f7;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.32), 0 1px 3px rgba(0, 0, 0, 0.3),
+              inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+.bg-widget.light {
+  background-color: rgba(250, 250, 252, 0.94);
+  color: #1d1d1f;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16), 0 1px 3px rgba(0, 0, 0, 0.1),
+              inset 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+.bg-widget.dark .charging-badge { box-shadow: 0 0 0 2px rgb(30, 30, 33); }
+.bg-widget.light .charging-badge { box-shadow: 0 0 0 2px rgb(250, 250, 252); }
+
+.bg-widget .pct {
+  font-weight: 700;
+  font-size: 1.02em;
+}
+.bg-widget .pct-large {
+  font-weight: 800;
+  font-size: 1.9em;
+}
+.bg-widget .device-name { font-weight: 600; }
+.bg-widget.small .device-name { opacity: 0.7; }
+.bg-widget .device-status {
+  opacity: 0.62;
+  font-size: 0.86em;
+}
+.bg-widget .widget-header { margin-bottom: 10px; }
+.bg-widget .header-title {
+  font-weight: 700;
+  font-size: 0.86em;
+  opacity: 0.6;
+}
+.bg-widget .header-icon { opacity: 0.6; }
+.bg-widget .widget-row {
+  padding: 6px 2px;
+}
+.bg-widget.large .pct { font-size: 1.12em; }
+.bg-widget .empty-icon { opacity: 0.35; }
+.bg-widget .empty-label {
+  opacity: 0.6;
+  font-weight: 600;
+}
+
+/* Hover affordance: the widget is clickable (opens the app). */
+.bg-widget-window .bg-widget:hover.dark { background-color: rgba(38, 38, 42, 0.92); }
+.bg-widget-window .bg-widget:hover.light { background-color: rgba(255, 255, 255, 0.96); }
+
+/* --------------------------------------------------------- preferences */
+.widget-preview {
+  padding: 20px 14px;
+  border-radius: 18px;
+  background-image: linear-gradient(135deg, #3a5ba0, #7b4fa0 55%, #c0567a);
+}
+.light .widget-preview {
+  background-image: linear-gradient(135deg, #9fb8f5, #c3b3f0 55%, #f0b8d0);
+}
