@@ -1,0 +1,42 @@
+name: Flatpak
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - packaging/flatpak/**
+      - .github/workflows/flatpak.yml
+
+permissions:
+  contents: read
+
+jobs:
+  flatpak:
+    name: Build Flatpak bundle
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder
+          # Ubuntu 24.04 blocks unprivileged user namespaces, which bubblewrap needs.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Build
+        run: |
+          FB="$RUNNER_TEMP/flatpak"
+          flatpak-builder --user --install-deps-from=flathub --force-clean --disable-rofiles-fuse \
+            --state-dir="$FB/state" --repo="$FB/repo" "$FB/build" \
+            packaging/flatpak/io.github.rafay_ah.BlueGlance.yml
+          mkdir -p dist
+          flatpak build-bundle "$FB/repo" dist/BlueGlance.flatpak io.github.rafay_ah.BlueGlance \
+            --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Smoke test
+        run: |
+          flatpak install --user -y --noninteractive dist/BlueGlance.flatpak
+          flatpak run io.github.rafay_ah.BlueGlance --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: dist/BlueGlance.flatpak
