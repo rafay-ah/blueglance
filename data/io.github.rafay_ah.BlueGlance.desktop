@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=BlueGlance
+GenericName=Bluetooth Battery Monitor
+Comment=Battery levels of your Bluetooth devices, at a glance
+Exec=blueglance
+Icon=io.github.rafay_ah.BlueGlance
+Terminal=false
+Type=Application
+Categories=GTK;Utility;
+Keywords=bluetooth;battery;headphones;airpods;earbuds;mouse;keyboard;controller;gamepad;widget;
+StartupNotify=true
+SingleMainWindow=true
+X-GNOME-UsesNotifications=true

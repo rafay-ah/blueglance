@@ -1,0 +1,6 @@
+option('gnome_extension', type: 'boolean', value: true,
+       description: 'Install the companion GNOME Shell extension (pinned widget + top bar menu)')
+option('system_autostart', type: 'boolean', value: false,
+       description: 'Install an autostart entry in the system XDG config dir (used by distro packages)')
+option('python', type: 'string', value: '',
+       description: 'Python interpreter for the launcher (default: python3 from PATH)')

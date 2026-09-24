@@ -1,0 +1,51 @@
+id: io.github.rafay_ah.BlueGlance
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: blueglance
+finish-args:
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --device=dri
+  # Battery levels come from BlueZ and UPower
+  - --system-talk-name=org.bluez
+  - --system-talk-name=org.freedesktop.UPower
+  # AirPods left/right/case use a Bluetooth L2CAP socket
+  - --allow=bluetooth
+  - --share=network
+  # Tray icon (KDE Plasma, AppIndicator, XFCE, …)
+  - --talk-name=org.kde.StatusNotifierWatcher
+  # Companion GNOME Shell extension (pinned widget + top bar menu)
+  - --talk-name=org.gnome.Shell.Extensions
+  - --talk-name=io.github.rafay_ah.BlueGlance.ShellExtension
+  - --filesystem=xdg-data/gnome-shell/extensions:create
+cleanup:
+  - /include
+  - /lib/pkgconfig
+  - /share/gir-1.0
+  - /share/vala
+modules:
+  # Pins the widget to the desktop on Wayland compositors with wlr-layer-shell
+  # (KDE Plasma, Sway, Hyprland, …).
+  - name: gtk4-layer-shell
+    buildsystem: meson
+    config-opts:
+      - -Dexamples=false
+      - -Ddocs=false
+      - -Dtests=false
+      - -Dsmoke-tests=false
+      - -Dvapi=false
+    sources:
+      - type: git
+        url: https://github.com/wmww/gtk4-layer-shell.git
+        tag: v1.3.0
+        commit: 1c963c51514581c41b9bdae08cdf69171265cdda
+
+  - name: blueglance
+    buildsystem: meson
+    config-opts:
+      - -Dgnome_extension=true
+    sources:
+      - type: dir
+        path: ../..

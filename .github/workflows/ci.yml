@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Tests and UI smoke test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            python3-gi python3-gi-cairo python3-cairo gir1.2-gtk-4.0 gir1.2-adw-1 \
+            gir1.2-graphene-1.0 librsvg2-common python3-pytest python3-dbusmock \
+            xvfb xauth dbus-x11 meson ninja-build desktop-file-utils appstream
+
+      - name: Unit and integration tests
+        run: dbus-run-session -- /usr/bin/python3 -m pytest -v tests
+
+      - name: Render every screen in demo mode
+        run: |
+          dbus-run-session -- xvfb-run -a -s "-screen 0 1920x1200x24" \
+            env GDK_BACKEND=x11 GTK_A11Y=none /usr/bin/python3 scripts/screenshots.py "$RUNNER_TEMP/screenshots"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: screenshots
+          path: ${{ runner.temp }}/screenshots
+
+      - name: Meson build, validation and install
+        run: |
+          meson setup build --prefix=/usr -Dpython=/usr/bin/python3
+          meson test -C build --print-errorlogs
+          DESTDIR="$RUNNER_TEMP/dest" meson install -C build
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Ruff
+        run: |
+          pip install ruff
+          ruff check src tests scripts
+      - name: GNOME Shell extension syntax
+        run: |
+          for f in gnome-extension/*/*.js; do
+            cp "$f" "$RUNNER_TEMP/check.mjs"
+            node --check "$RUNNER_TEMP/check.mjs" || { echo "::error file=$f::syntax error"; exit 1; }
+          done
+          python3 -c "import json; json.load(open('gnome-extension/blueglance@rafay-ah.github.io/metadata.json'))"
+      - name: ShellCheck
+        run: shellcheck install.sh scripts/*.sh data/blueglance-enable-bluez-battery
+
+  package:
+    name: Debian package
+    needs: test
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build tools
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends meson ninja-build dpkg-dev zip
+      - name: Build .deb and extension zip
+        run: |
+          scripts/build-deb.sh dist
+          scripts/pack-extension.sh dist
+      - name: Install the .deb (checks dependencies resolve on Ubuntu 24.04)
+        run: |
+          sudo apt-get install -y ./dist/blueglance_*_all.deb
+          blueglance --version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages
+          path: dist/*

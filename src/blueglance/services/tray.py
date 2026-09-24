@@ -50,8 +50,12 @@ SNI_XML = """
     <property name="XAyatanaOrderingIndex" type="u" access="read"/>
     <method name="ContextMenu"><arg name="x" type="i" direction="in"/><arg name="y" type="i" direction="in"/></method>
     <method name="Activate"><arg name="x" type="i" direction="in"/><arg name="y" type="i" direction="in"/></method>
-    <method name="SecondaryActivate"><arg name="x" type="i" direction="in"/><arg name="y" type="i" direction="in"/></method>
-    <method name="Scroll"><arg name="delta" type="i" direction="in"/><arg name="orientation" type="s" direction="in"/></method>
+    <method name="SecondaryActivate">
+      <arg name="x" type="i" direction="in"/><arg name="y" type="i" direction="in"/>
+    </method>
+    <method name="Scroll">
+      <arg name="delta" type="i" direction="in"/><arg name="orientation" type="s" direction="in"/>
+    </method>
     <method name="XAyatanaSecondaryActivate"><arg name="timestamp" type="u" direction="in"/></method>
     <signal name="NewTitle"/>
     <signal name="NewIcon"/>

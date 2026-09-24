@@ -38,6 +38,7 @@ DEFAULTS: dict = {
     "widget_margin_x": 48,
     "widget_margin_y": 64,
     "shell_widget_position": None,  # opaque, owned by the GNOME Shell extension
+    "shell_extension_autoenabled": False,
     # Notifications
     "notify_low": True,
     "low_threshold": 20,

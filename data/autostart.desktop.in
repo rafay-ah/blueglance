@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=BlueGlance
+Comment=Battery levels of your Bluetooth devices, at a glance
+Exec=@BINDIR@/blueglance --background
+Icon=io.github.rafay_ah.BlueGlance
+Terminal=false
+Type=Application
+NoDisplay=true
+X-GNOME-Autostart-enabled=true
+X-GNOME-Autostart-Delay=3
+X-KDE-autostart-after=panel

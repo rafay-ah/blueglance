@@ -15,15 +15,15 @@ os.environ.setdefault("BLUEGLANCE_DEMO", "1")
 os.environ.setdefault("BLUEGLANCE_DEMO_STATIC", "1")
 os.environ.setdefault("GTK_A11Y", "none")
 
-import gi  # noqa: E402
+import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
 gi.require_version("Graphene", "1.0")
-from gi.repository import Adw, GLib, Graphene, Gtk  # noqa: E402
+from gi.repository import Adw, GLib, Graphene, Gtk
 
-from blueglance.application import BlueGlanceApplication  # noqa: E402
-from blueglance.ui.widget_view import WidgetView  # noqa: E402
+from blueglance.application import BlueGlanceApplication
+from blueglance.ui.widget_view import WidgetView
 
 OUT = os.path.abspath(sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "docs", "screenshots"))
 SCALE = float(os.environ.get("SHOT_SCALE", "2"))

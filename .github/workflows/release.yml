@@ -1,0 +1,107 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, e.g. 0.1.0 (must match meson.build)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: .deb, extension and source
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            V="${{ inputs.version }}"
+          else
+            V="${GITHUB_REF_NAME#v}"
+          fi
+          M="$(sed -n "s/^  version: '\(.*\)',$/\1/p" meson.build)"
+          [ "$V" = "$M" ] || { echo "::error::version $V does not match meson.build ($M)"; exit 1; }
+          echo "version=$V" >> "$GITHUB_OUTPUT"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends meson ninja-build dpkg-dev zip \
+            python3-gi python3-gi-cairo python3-cairo gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-graphene-1.0 \
+            librsvg2-common python3-pytest python3-dbusmock dbus-x11
+
+      - name: Tests
+        run: dbus-run-session -- /usr/bin/python3 -m pytest -q tests
+
+      - name: Build
+        run: |
+          V="${{ steps.version.outputs.version }}"
+          scripts/build-deb.sh dist
+          scripts/pack-extension.sh dist
+          git archive --format=tar.gz --prefix="blueglance-$V/" -o "dist/blueglance-$V.tar.gz" HEAD
+          sudo apt-get install -y ./dist/blueglance_*_all.deb && blueglance --version
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-files
+          path: dist/*
+
+  flatpak:
+    name: Flatpak bundle
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install flatpak-builder
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends flatpak flatpak-builder
+          # Ubuntu 24.04 blocks unprivileged user namespaces, which bubblewrap needs.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+      - name: Build
+        run: |
+          flatpak-builder --user --install-deps-from=flathub --force-clean --disable-rofiles-fuse \
+            --repo=repo build-dir packaging/flatpak/io.github.rafay_ah.BlueGlance.yml
+          mkdir -p dist
+          flatpak build-bundle repo dist/BlueGlance.flatpak io.github.rafay_ah.BlueGlance \
+            --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: dist/BlueGlance.flatpak
+
+  publish:
+    name: Publish GitHub release
+    needs: [build, flatpak]
+    if: ${{ always() && needs.build.result == 'success' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Collect files
+        run: |
+          mkdir -p dist
+          find artifacts -type f -exec cp {} dist/ \;
+          V="${{ needs.build.outputs.version }}"
+          if [ -f dist/BlueGlance.flatpak ]; then mv dist/BlueGlance.flatpak "dist/BlueGlance-$V.flatpak"; fi
+          (cd dist && sha256sum * > SHA256SUMS)
+          ls -l dist
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.build.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          name: BlueGlance ${{ needs.build.outputs.version }}
+          body_path: docs/release-notes.md
+          files: dist/*

@@ -21,9 +21,12 @@ from ..session import info as session_info
 log = logging.getLogger(__name__)
 
 EXTENSION_BUS_NAME = "io.github.rafay_ah.BlueGlance.ShellExtension"
-SHELL_BUS = "org.gnome.Shell"
-SHELL_PATH = "/org/gnome/Shell"
+# The small org.gnome.Shell.Extensions service forwards to GNOME Shell and is
+# reachable from Flatpak too.
+SHELL_BUS = "org.gnome.Shell.Extensions"
+SHELL_PATH = "/org/gnome/Shell/Extensions"
 EXTENSIONS_IFACE = "org.gnome.Shell.Extensions"
+INACTIVE_GRACE_MS = 2500
 
 STATE_ACTIVE = 1
 STATE_INACTIVE = 2
@@ -49,12 +52,18 @@ def bundled_extension_dir() -> Path | None:
 
 
 def user_extension_dir() -> Path:
+    if session_info().flatpak:
+        # The sandbox's XDG_DATA_HOME is private; GNOME Shell reads the host's.
+        base = os.environ.get("HOST_XDG_DATA_HOME") or os.path.join(GLib.get_home_dir(), ".local", "share")
+        return Path(base) / "gnome-shell" / "extensions" / EXTENSION_UUID
     return Path(GLib.get_user_data_dir()) / "gnome-shell" / "extensions" / EXTENSION_UUID
 
 
 def installed_on_disk() -> bool:
     if (user_extension_dir() / "metadata.json").is_file():
         return True
+    if session_info().flatpak:
+        return False  # the sandbox can't see the host's system-wide extensions
     return any(
         (Path(base) / "gnome-shell" / "extensions" / EXTENSION_UUID / "metadata.json").is_file()
         for base in GLib.get_system_data_dirs()
@@ -75,6 +84,7 @@ class ShellIntegration(GObject.Object):
         self._bus: Gio.DBusConnection | None = None
         self._watch_ids: list[int] = []
         self._signal_id = 0
+        self._inactive_source = 0
 
     # -- lifecycle ----------------------------------------------------------
     def start(self) -> None:
@@ -89,13 +99,16 @@ class ShellIntegration(GObject.Object):
         if not self.relevant:
             return
         self._watch_ids.append(Gio.bus_watch_name_on_connection(
-            self._bus, SHELL_BUS, Gio.BusNameWatcherFlags.NONE,
+            self._bus, "org.gnome.Shell", Gio.BusNameWatcherFlags.NONE,
             lambda *_: self.refresh(), lambda *_: self._set_info({})))
         self._signal_id = self._bus.signal_subscribe(
             SHELL_BUS, EXTENSIONS_IFACE, "ExtensionStateChanged", SHELL_PATH, None,
             Gio.DBusSignalFlags.NONE, self._on_state_changed)
 
     def stop(self) -> None:
+        if self._inactive_source:
+            GLib.source_remove(self._inactive_source)
+            self._inactive_source = 0
         for watch_id in self._watch_ids:
             Gio.bus_unwatch_name(watch_id)
         self._watch_ids.clear()
@@ -105,6 +118,21 @@ class ShellIntegration(GObject.Object):
 
     # -- state --------------------------------------------------------------
     def _set_active(self, active: bool) -> None:
+        if self._inactive_source:
+            GLib.source_remove(self._inactive_source)
+            self._inactive_source = 0
+        if active:
+            self._apply_active(True)
+        elif self.active:
+            # Don't flash the fallback widget while the Shell reloads the extension.
+            self._inactive_source = GLib.timeout_add(INACTIVE_GRACE_MS, self._on_inactive_timeout)
+
+    def _on_inactive_timeout(self) -> bool:
+        self._inactive_source = 0
+        self._apply_active(False)
+        return GLib.SOURCE_REMOVE
+
+    def _apply_active(self, active: bool) -> None:
         if active != self.active:
             log.info("GNOME Shell extension %s", "connected" if active else "not running")
             self.active = active
@@ -112,7 +140,25 @@ class ShellIntegration(GObject.Object):
 
     def _set_info(self, info: dict) -> None:
         self.info = info
+        self._maybe_auto_enable()
         self.emit("changed")
+
+    def _maybe_auto_enable(self) -> None:
+        """Enable the extension once, the first time GNOME Shell knows about it.
+
+        The desktop widget is on by default; if the user later disables the
+        extension themselves, we respect that.
+        """
+        config = self.app.config
+        if config is None or config["shell_extension_autoenabled"] or not self.info:
+            return
+        if not config["widget_enabled"] and not config["tray_icon"]:
+            return
+        config["shell_extension_autoenabled"] = True
+        state = int(self.info.get("state", 0) or 0)
+        if state in (STATE_INACTIVE, STATE_INITIALIZED):
+            log.info("Enabling the BlueGlance GNOME Shell extension")
+            self.enable()
 
     def _on_state_changed(self, _conn, _sender, _path, _iface, _signal, params) -> None:
         uuid, info = params.unpack()

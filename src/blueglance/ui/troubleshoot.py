@@ -27,7 +27,10 @@ MANUAL_COMMAND = (
 
 def find_helper() -> str | None:
     here = os.path.dirname(os.path.abspath(__file__))
-    candidates = [
+    candidates = []
+    if os.environ.get("BLUEGLANCE_LIBEXECDIR"):
+        candidates.append(os.path.join(os.environ["BLUEGLANCE_LIBEXECDIR"], HELPER_NAME))
+    candidates += [
         os.path.join(here, "..", "..", "..", "data", HELPER_NAME),  # git checkout
         "/usr/libexec/blueglance/" + HELPER_NAME,
         "/usr/lib/blueglance/" + HELPER_NAME,

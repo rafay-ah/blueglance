@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2026 Abdul Rafay and contributors -->
+<component type="desktop-application">
+  <id>io.github.rafay_ah.BlueGlance</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+
+  <name>BlueGlance</name>
+  <summary>Battery levels of your Bluetooth devices at a glance</summary>
+  <developer id="io.github.rafay_ah">
+    <name>Abdul Rafay</name>
+  </developer>
+
+  <description>
+    <p>
+      Never get surprised by a dead mouse, keyboard or pair of headphones again.
+      BlueGlance shows the battery level of everything connected to your computer
+      in a desktop widget inspired by the macOS Batteries widget, in your top bar or
+      system tray, and in a clean GTK 4 app.
+    </p>
+    <ul>
+      <li>Desktop widget in three sizes, pinned below your windows, with light and dark styles</li>
+      <li>AirPods and Beats: left, right and charging case levels</li>
+      <li>Mice, keyboards, headsets, game controllers, Logitech receivers and more</li>
+      <li>Notifications before a battery runs out, and optionally when it is full</li>
+      <li>Top bar menu on GNOME and tray icon on KDE Plasma, Cinnamon, XFCE and others</li>
+      <li>Starts with your session in the background; one switch to turn that off</li>
+    </ul>
+    <p>
+      On GNOME, the desktop widget and top bar menu are provided by the BlueGlance
+      GNOME Shell extension, which the app can enable for you.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.rafay_ah.BlueGlance.desktop</launchable>
+
+  <url type="homepage">https://github.com/rafay-ah/blueglance</url>
+  <url type="bugtracker">https://github.com/rafay-ah/blueglance/issues</url>
+  <url type="vcs-browser">https://github.com/rafay-ah/blueglance</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>The main window</caption>
+      <image>https://raw.githubusercontent.com/rafay-ah/blueglance/HEAD/docs/screenshots/main-dark.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Desktop widgets in three sizes</caption>
+      <image>https://raw.githubusercontent.com/rafay-ah/blueglance/HEAD/docs/screenshots/widgets-dark.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>AirPods left, right and case</caption>
+      <image>https://raw.githubusercontent.com/rafay-ah/blueglance/HEAD/docs/screenshots/details-dark.png</image>
+    </screenshot>
+  </screenshots>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#a9c7ff</color>
+    <color type="primary" scheme_preference="dark">#1c3f8f</color>
+  </branding>
+
+  <content_rating type="oars-1.1"/>
+
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+  </supports>
+
+  <keywords>
+    <keyword>bluetooth</keyword>
+    <keyword>battery</keyword>
+    <keyword>airpods</keyword>
+    <keyword>headphones</keyword>
+    <keyword>widget</keyword>
+  </keywords>
+
+  <releases>
+    <release version="0.1.0" date="2026-09-24">
+      <description>
+        <p>First release: desktop widget, AirPods support, notifications, tray and GNOME Shell integration.</p>
+      </description>
+    </release>
+  </releases>
+</component>

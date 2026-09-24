@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE policyconfig PUBLIC "-//freedesktop//DTD PolicyKit Policy Configuration 1.0//EN"
+ "http://www.freedesktop.org/standards/PolicyKit/1/policyconfig.dtd">
+<policyconfig>
+  <vendor>BlueGlance</vendor>
+  <vendor_url>https://github.com/rafay-ah/blueglance</vendor_url>
+  <icon_name>io.github.rafay_ah.BlueGlance</icon_name>
+  <action id="io.github.rafay_ah.BlueGlance.enable-bluez-battery">
+    <description>Turn on headphone battery reporting in BlueZ</description>
+    <message>Authentication is required to let your headphones report their battery level</message>
+    <defaults>
+      <allow_any>auth_admin</allow_any>
+      <allow_inactive>auth_admin</allow_inactive>
+      <allow_active>auth_admin_keep</allow_active>
+    </defaults>
+    <annotate key="org.freedesktop.policykit.exec.path">@PKGLIBEXECDIR@/blueglance-enable-bluez-battery</annotate>
+  </action>
+</policyconfig>

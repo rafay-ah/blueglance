@@ -9,11 +9,11 @@ import pytest
 dbusmock = pytest.importorskip("dbusmock")
 dbus = pytest.importorskip("dbus")
 
-from gi.repository import Gio, GLib  # noqa: E402
+from gi.repository import Gio, GLib
 
-from blueglance.devices.bluez import BlueZProvider  # noqa: E402
-from blueglance.devices.upower import UPowerProvider  # noqa: E402
-from blueglance.models import DeviceKind  # noqa: E402
+from blueglance.devices.bluez import BlueZProvider
+from blueglance.devices.upower import UPowerProvider
+from blueglance.models import DeviceKind
 
 MOUSE_PATH = "/org/freedesktop/UPower/devices/mouse_dev_E4_17_D8_00_11_22"
 

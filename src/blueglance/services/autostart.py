@@ -1,7 +1,13 @@
-"""Launch at login: an XDG autostart entry, or the Background portal in Flatpak."""
+"""Launch at login: an XDG autostart entry, or the Background portal in Flatpak.
+
+Distribution packages install a system-wide entry (/etc/xdg/autostart) so
+BlueGlance starts from the very first login. A per-user entry with the same
+name overrides it: turning autostart off writes one with ``Hidden=true``.
+"""
 
 from __future__ import annotations
 
+import configparser
 import logging
 import os
 import shutil
@@ -18,10 +24,39 @@ log = logging.getLogger(__name__)
 PORTAL_BUS = "org.freedesktop.portal.Desktop"
 PORTAL_PATH = "/org/freedesktop/portal/desktop"
 BACKGROUND_IFACE = "org.freedesktop.portal.Background"
+FILE_NAME = f"{APP_ID}.desktop"
 
 
-def autostart_file() -> Path:
-    return Path(GLib.get_user_config_dir()) / "autostart" / f"{APP_ID}.desktop"
+def user_entry() -> Path:
+    return Path(GLib.get_user_config_dir()) / "autostart" / FILE_NAME
+
+
+def system_entry() -> Path | None:
+    for base in GLib.get_system_config_dirs():
+        path = Path(base) / "autostart" / FILE_NAME
+        if path.is_file():
+            return path
+    return None
+
+
+def entry_enabled(path: Path) -> bool:
+    parser = configparser.ConfigParser(interpolation=None, strict=False)
+    try:
+        parser.read(path, encoding="utf-8")
+    except (OSError, configparser.Error):
+        return False
+    section = parser["Desktop Entry"] if parser.has_section("Desktop Entry") else {}
+    hidden = str(section.get("Hidden", "false")).strip().lower() == "true"
+    disabled = str(section.get("X-GNOME-Autostart-enabled", "true")).strip().lower() == "false"
+    return not hidden and not disabled
+
+
+def is_enabled() -> bool:
+    user = user_entry()
+    if user.exists():
+        return entry_enabled(user)
+    system = system_entry()
+    return system is not None and entry_enabled(system)
 
 
 def launch_command() -> list[str]:
@@ -46,22 +81,43 @@ def desktop_exec(argv: list[str]) -> str:
     return " ".join(quote(a) for a in argv)
 
 
-def render_entry(argv: list[str]) -> str:
-    return "\n".join(
-        [
-            "[Desktop Entry]",
-            "Type=Application",
-            f"Name={APP_NAME}",
-            "Comment=Battery levels of your Bluetooth devices, at a glance",
-            f"Icon={APP_ID}",
-            f"Exec={desktop_exec(argv + ['--background'])}",
-            "Terminal=false",
-            "X-GNOME-Autostart-enabled=true",
-            "X-GNOME-Autostart-Delay=3",
-            "X-KDE-autostart-after=panel",
-            "",
-        ]
-    )
+def render_entry(argv: list[str], hidden: bool = False) -> str:
+    lines = [
+        "[Desktop Entry]",
+        "Type=Application",
+        f"Name={APP_NAME}",
+        "Comment=Battery levels of your Bluetooth devices, at a glance",
+        f"Icon={APP_ID}",
+        f"Exec={desktop_exec(argv + ['--background'])}",
+        "Terminal=false",
+        "NoDisplay=true",
+        f"X-GNOME-Autostart-enabled={'false' if hidden else 'true'}",
+        "X-GNOME-Autostart-Delay=3",
+        "X-KDE-autostart-after=panel",
+    ]
+    if hidden:
+        lines.append("Hidden=true")
+    return "\n".join(lines) + "\n"
+
+
+def set_enabled(enabled: bool) -> None:
+    user = user_entry()
+    system = system_entry()
+    if enabled:
+        if system is not None and entry_enabled(system):
+            if user.exists():
+                user.unlink()  # drop our override, the system entry takes over
+            return
+        content = render_entry(launch_command())
+    else:
+        if system is None:
+            if user.exists():
+                user.unlink()
+            return
+        content = render_entry(launch_command(), hidden=True)
+    user.parent.mkdir(parents=True, exist_ok=True)
+    if not user.exists() or user.read_text(encoding="utf-8") != content:
+        user.write_text(content, encoding="utf-8")
 
 
 class Autostart:
@@ -71,16 +127,15 @@ class Autostart:
         self._handler = 0
 
     def start(self) -> None:
+        if not session_info().flatpak and (self.config["onboarded"] or system_entry() is not None):
+            # The files are the source of truth once set up: respect changes made
+            # with other tools (GNOME Tweaks, KDE System Settings, …).
+            enabled = is_enabled()
+            if enabled != self.config["autostart"]:
+                self.config["autostart"] = enabled
+            elif enabled and user_entry().exists():
+                self.sync()  # refresh Exec= in case BlueGlance moved
         self._handler = self.config.connect("changed", self._on_config_changed)
-        if not self.config["onboarded"] or session_info().flatpak:
-            return
-        # The autostart file is the source of truth once set up: respect it if the
-        # user removed/added it with another tool (e.g. GNOME Tweaks).
-        exists = autostart_file().exists()
-        if exists != self.config["autostart"]:
-            self.config["autostart"] = exists
-        elif exists:
-            self.sync()  # refresh Exec= in case BlueGlance moved
 
     def stop(self) -> None:
         if self._handler:
@@ -96,17 +151,10 @@ class Autostart:
         if session_info().flatpak:
             self._request_background(enabled)
             return
-        path = autostart_file()
         try:
-            if enabled:
-                path.parent.mkdir(parents=True, exist_ok=True)
-                content = render_entry(launch_command())
-                if not path.exists() or path.read_text(encoding="utf-8") != content:
-                    path.write_text(content, encoding="utf-8")
-            elif path.exists():
-                path.unlink()
+            set_enabled(enabled)
         except OSError as exc:
-            log.warning("Could not update autostart entry %s: %s", path, exc)
+            log.warning("Could not update the autostart entry: %s", exc)
 
     def _request_background(self, enabled: bool) -> None:
         token = f"blueglance{GLib.random_int_range(0, 1_000_000)}"
@@ -131,4 +179,3 @@ class Autostart:
             bus.call_finish(result)
         except GLib.Error as error:
             log.warning("Background portal request failed: %s", error.message)
-

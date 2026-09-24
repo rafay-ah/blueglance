@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 
-from gi.repository import Gio, GLib
+from gi.repository import Gio
 
 from ..models import ChargeState, DeviceKind, Report, clamp_level, normalize_address
 from . import Provider

@@ -84,6 +84,10 @@ class MainWindow(Adw.ApplicationWindow):
         self._install_shortcuts_overlay()
         self._manager_handler = app.manager.connect("changed", lambda *_: self.refresh())
         self._config_handler = app.config.connect("changed", self._on_config_changed)
+        self._shell = app.services.get("shell")
+        self._shell_handler = self._shell.connect("changed", lambda *_: self.refresh(animate=False)) \
+            if self._shell is not None else 0
+        self._banner_action = None
         self.connect("close-request", self._on_close_request)
         self.refresh(animate=False)
 
@@ -99,10 +103,12 @@ class MainWindow(Adw.ApplicationWindow):
             <child><object class="GtkShortcutsSection"><property name="section-name">shortcuts</property>
               <child><object class="GtkShortcutsGroup"><property name="title">General</property>
                 <child><object class="GtkShortcutsShortcut">
-                  <property name="title">Preferences</property><property name="accelerator">&lt;Primary&gt;comma</property>
+                  <property name="title">Preferences</property>
+                  <property name="accelerator">&lt;Primary&gt;comma</property>
                 </object></child>
                 <child><object class="GtkShortcutsShortcut">
-                  <property name="title">Toggle desktop widget</property><property name="accelerator">&lt;Primary&gt;d</property>
+                  <property name="title">Toggle desktop widget</property>
+                  <property name="accelerator">&lt;Primary&gt;d</property>
                 </object></child>
                 <child><object class="GtkShortcutsShortcut">
                   <property name="title">Close window</property><property name="accelerator">&lt;Primary&gt;w</property>
@@ -122,10 +128,12 @@ class MainWindow(Adw.ApplicationWindow):
         # the background (widget, tray, notifications) when that's enabled.
         self.app.manager.disconnect(self._manager_handler)
         self.app.config.disconnect(self._config_handler)
+        if self._shell_handler:
+            self._shell.disconnect(self._shell_handler)
         return False
 
     def _on_config_changed(self, _config, key: str) -> None:
-        if key in ("low_threshold", "show_disconnected", "show_no_battery", "hidden_devices"):
+        if key in ("low_threshold", "show_disconnected", "show_no_battery", "hidden_devices", "widget_enabled"):
             self.refresh(animate=False)
 
     # -- rendering ----------------------------------------------------------
@@ -210,15 +218,36 @@ class MainWindow(Adw.ApplicationWindow):
             and bluez.battery_provider_supported is False
             and any(d.hints.get("handsfree") for d in nobattery)
         )
+        title, button, action = None, None, None
         if needs_fix:
-            self.banner.set_title("Your headphones can report their battery, but BlueZ has it turned off")
-            self.banner.set_button_label("Fix…")
+            title = "Your headphones can report their battery, but BlueZ has it turned off"
+            button, action = "Fix…", "headset"
+        elif self._shell is not None and self._shell.relevant and self.app.config["widget_enabled"]:
+            status, text, shell_button = self._shell.describe()
+            if status != "active":
+                title = {
+                    "pending": "Log out and back in once to pin the widget to your desktop",
+                    "disabled": "Pin the battery widget to your GNOME desktop",
+                    "missing": "Pin the battery widget to your GNOME desktop",
+                    "blocked": "GNOME extensions are switched off, so the widget can't be pinned",
+                }.get(status, text)
+                button, action = shell_button, "shell" if shell_button else None
+        self._banner_action = action
+        if title:
+            self.banner.set_title(title)
+            self.banner.set_button_label(button)
             self.banner.set_revealed(True)
         else:
             self.banner.set_revealed(False)
 
     def _on_banner_clicked(self, _banner) -> None:
-        self.app.activate_action("headset-battery-help", None)
+        if self._banner_action == "headset":
+            self.app.activate_action("headset-battery-help", None)
+        elif self._banner_action == "shell" and self._shell is not None:
+            self._shell.perform_action(self)
+            status, _text, _button = self._shell.describe()
+            if status == "pending":
+                self.toast("Installed — log out and back in to finish")
 
     def _on_show_details(self, _card, device_id: str) -> None:
         from .details import DeviceDetailsDialog

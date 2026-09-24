@@ -277,10 +277,14 @@ def main() -> None:
         for name, factory in ICONS.items():
             with open(os.path.join(out_dir, f"{name}.svg"), "w", encoding="utf-8") as fh:
                 fh.write(svg(factory()))
-    os.makedirs(APP_SYMBOLIC_DIR, exist_ok=True)
-    with open(os.path.join(APP_SYMBOLIC_DIR, "io.github.rafay_ah.BlueGlance-symbolic.svg"), "w",
-              encoding="utf-8") as fh:
-        fh.write(svg(app_symbolic()))
+    # The app's symbolic icon: installed into hicolor, and bundled next to the
+    # UI icons so the tray icon also resolves when running from a checkout.
+    bundled = os.path.join(ROOT, "src", "blueglance", "icons", "hicolor", "scalable", "apps")
+    for directory in (APP_SYMBOLIC_DIR, bundled):
+        os.makedirs(directory, exist_ok=True)
+        with open(os.path.join(directory, "io.github.rafay_ah.BlueGlance-symbolic.svg"), "w",
+                  encoding="utf-8") as fh:
+            fh.write(svg(app_symbolic()))
     ext_dir = OUT_DIRS[1]
     with open(os.path.join(ext_dir, "blueglance-app-symbolic.svg"), "w", encoding="utf-8") as fh:
         fh.write(svg(app_symbolic()))

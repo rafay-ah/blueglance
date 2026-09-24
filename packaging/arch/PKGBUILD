@@ -1,0 +1,31 @@
+# Maintainer: Abdul Rafay <rafay-ah at users dot noreply dot github dot com>
+pkgname=blueglance
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Battery levels of your Bluetooth devices at a glance: desktop widget, tray, AirPods L/R/case"
+arch=('any')
+url="https://github.com/rafay-ah/blueglance"
+license=('GPL-3.0-or-later')
+depends=('python' 'python-gobject' 'python-cairo' 'gtk4' 'libadwaita' 'librsvg')
+makedepends=('meson')
+optdepends=(
+  'upower: battery levels of most devices'
+  'bluez: Bluetooth support'
+  'gtk4-layer-shell: pin the widget on KDE Plasma, Sway, Hyprland and other wlroots compositors'
+  'polkit: one-click fix for headset battery reporting on old BlueZ'
+)
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  arch-meson "$pkgname-$pkgver" build -Dpython=/usr/bin/python -Dsystem_autostart=true
+  meson compile -C build
+}
+
+check() {
+  meson test -C build --print-errorlogs
+}
+
+package() {
+  meson install -C build --destdir "$pkgdir"
+}

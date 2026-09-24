@@ -1,0 +1,27 @@
+# Tooling configuration. BlueGlance itself is built and installed with Meson
+# (see meson.build); run it from a checkout with:  PYTHONPATH=src python3 -m blueglance
+
+[project]
+name = "blueglance"
+version = "0.1.0"
+description = "Battery levels of your Bluetooth devices at a glance"
+readme = "README.md"
+license = "GPL-3.0-or-later"
+requires-python = ">=3.10"
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "RUF100"]
+ignore = [
+  "E402",   # gi.require_version() must run before gi.repository imports
+  "B008",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["blueglance"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
