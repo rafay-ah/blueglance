@@ -1,0 +1,28 @@
+#!/bin/sh
+# Turn on BlueZ's experimental features so headsets can report their battery
+# (needed for BlueZ 5.56 - 5.70 only). Run as root, e.g. via pkexec.
+set -eu
+
+CONF=/etc/bluetooth/main.conf
+
+if [ "$(id -u)" -ne 0 ]; then
+    echo "This helper must run as root." >&2
+    exit 1
+fi
+
+mkdir -p /etc/bluetooth
+[ -f "$CONF" ] || printf '[General]\n' > "$CONF"
+cp -p "$CONF" "$CONF.blueglance-backup"
+
+if grep -Eq '^[#[:space:]]*Experimental[[:space:]]*=' "$CONF"; then
+    sed -i -E 's/^[#[:space:]]*Experimental[[:space:]]*=.*/Experimental = true/' "$CONF"
+elif grep -q '^\[General\]' "$CONF"; then
+    sed -i '/^\[General\]/a Experimental = true' "$CONF"
+else
+    printf '\n[General]\nExperimental = true\n' >> "$CONF"
+fi
+
+if command -v systemctl >/dev/null 2>&1; then
+    systemctl restart bluetooth
+fi
+echo "BlueZ experimental features enabled (backup: $CONF.blueglance-backup)."

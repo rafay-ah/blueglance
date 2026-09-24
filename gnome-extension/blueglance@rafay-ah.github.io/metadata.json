@@ -1,0 +1,8 @@
+{
+  "uuid": "blueglance@rafay-ah.github.io",
+  "name": "BlueGlance",
+  "description": "Battery levels of your Bluetooth mice, keyboards, headphones, AirPods and controllers as a desktop widget and in the top bar.\n\nThis is the GNOME Shell companion of the BlueGlance app, which must be installed and running: https://github.com/rafay-ah/blueglance",
+  "shell-version": ["45", "46", "47", "48", "49", "50", "51"],
+  "session-modes": ["user", "unlock-dialog"],
+  "url": "https://github.com/rafay-ah/blueglance"
+}
