@@ -21,7 +21,9 @@ export XDG_RUNTIME_DIR="$WORK/run"
 export XDG_CONFIG_HOME="$HOME/.config"
 export XDG_DATA_HOME="$HOME/.local/share"
 export XDG_CURRENT_DESKTOP="${XDG_CURRENT_DESKTOP:-ubuntu:GNOME}"
-mkdir -p "$XDG_RUNTIME_DIR" "$XDG_DATA_HOME/gnome-shell/extensions" "$XDG_CONFIG_HOME/blueglance"
+mkdir -p "$XDG_RUNTIME_DIR" "$XDG_DATA_HOME/gnome-shell/extensions" "$XDG_CONFIG_HOME/blueglance" \
+    "$HOME/Desktop/Projects"
+printf 'Remember to charge the mouse\n' > "$HOME/Desktop/notes.txt"  # something for Desktop Icons to show
 chmod 700 "$XDG_RUNTIME_DIR"
 cp -r "$ROOT/gnome-extension/$UUID" "$XDG_DATA_HOME/gnome-shell/extensions/"
 
@@ -52,7 +54,9 @@ MOCK1=$!
 MOCK2=$!
 sleep 1
 
-gsettings set org.gnome.shell enabled-extensions "['$UUID']"
+EXTENSIONS="'$UUID'"
+for extra in ${EXTRA_EXTENSIONS:-}; do EXTENSIONS="$EXTENSIONS, '$extra'"; done
+gsettings set org.gnome.shell enabled-extensions "[$EXTENSIONS]"
 gsettings set org.gnome.shell disable-user-extensions false
 gsettings set org.gnome.desktop.background picture-uri "file://$WALL"
 gsettings set org.gnome.desktop.background picture-uri-dark "file://$WALL"

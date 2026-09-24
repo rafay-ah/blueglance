@@ -14,9 +14,23 @@ import * as PopupMenu from 'resource:///org/gnome/shell/ui/popupMenu.js';
 import {BatteryRing, componentIconName, iconFor, kindIconName, levelClass} from './ring.js';
 
 const SLOTS = {small: 4, medium: 4, large: 6};
+// Desktop-icons implementations draw a full-screen window just above the
+// wallpaper (on Wayland as a NORMAL window titled "Desktop Icons <n>", and
+// they hide it from global.get_window_actors()).
+const DESKTOP_APP_IDS = new Set(['com.rastersoft.ding', 'com.desktop.ding']);
 const DRAG_THRESHOLD = 6;
 const DEFAULT_MARGIN = [40, 28];
 const SHORT_COMPONENT = {left: 'L', right: 'R', case: 'Case'};
+
+function isDesktopWindow(win) {
+    if (!win)
+        return false;
+    if (win.get_window_type() === Meta.WindowType.DESKTOP)
+        return true;
+    if ((win.get_title() ?? '').startsWith('Desktop Icons'))
+        return true;
+    return DESKTOP_APP_IDS.has(win.get_gtk_application_id?.() ?? '');
+}
 
 export function vbox(params = {}) {
     const box = new St.BoxLayout(params);
@@ -91,6 +105,7 @@ class DesktopWidget extends St.BoxLayout {
         this._signals = [
             [global.display, global.display.connect('restacked', () => this._ensureStacking())],
             [global.display, global.display.connect('window-created', () => this._queueStackCheck())],
+            [global.window_group, global.window_group.connect('child-added', () => this._queueStackCheck())],
             [global.workspace_manager,
                 global.workspace_manager.connect('active-workspace-changed', () => this._queueStackCheck(450))],
             [Main.layoutManager, Main.layoutManager.connect('monitors-changed', () => this._restorePosition())],
@@ -107,9 +122,8 @@ class DesktopWidget extends St.BoxLayout {
         // Sit right above the wallpaper and any desktop-icons window (DING),
         // so the widget stays clickable, but below every normal window.
         let anchor = Main.layoutManager._backgroundGroup;
-        for (const actor of global.get_window_actors()) {
-            const win = actor.meta_window;
-            if (actor.get_parent() === group && win && win.get_window_type() === Meta.WindowType.DESKTOP)
+        for (const actor of group.get_children()) {
+            if (actor !== this && isDesktopWindow(actor.meta_window))
                 anchor = actor;
         }
         if (anchor && anchor.get_parent() === group) {
