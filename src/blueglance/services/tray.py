@@ -129,6 +129,21 @@ DBUSMENU_XML = """
 """
 
 
+def icon_theme_path() -> str:
+    """Only point hosts at our bundled icons when we're not installed.
+
+    Hosts such as the Ubuntu AppIndicator extension look *only* in
+    IconThemePath when it's set, so for installed copies leave it empty and
+    let them use the system icon theme.
+    """
+    name = f"{icons.APP_SYMBOLIC}.svg"
+    for base in [GLib.get_user_data_dir(), *GLib.get_system_data_dirs()]:
+        for sub in ("symbolic/apps", "scalable/apps"):
+            if os.path.exists(os.path.join(base, "icons", "hicolor", sub, name)):
+                return ""
+    return str(ICON_DIR)
+
+
 class MenuItem:
     def __init__(self, item_id: int, props: dict, callback=None, children=None):
         self.id = item_id
@@ -183,10 +198,11 @@ class DBusMenu:
                 log.debug("LayoutUpdated failed: %s", error.message)
 
     def _layout(self, item: MenuItem, depth: int, names) -> GLib.Variant:
+        # Children go into an "av": PyGObject boxes each Variant into a "v"
+        # itself, so don't wrap them again (hosts reject a "v" inside a "v").
         children = []
         if depth != 0:
-            for child in item.children:
-                children.append(GLib.Variant("v", self._layout(child, depth - 1, names)))
+            children = [self._layout(child, depth - 1, names) for child in item.children]
         return GLib.Variant("(ia{sv}av)", (item.id, item.variant_props(names), children))
 
     def _on_get(self, _conn, _sender, _path, _iface, name):
@@ -194,7 +210,7 @@ class DBusMenu:
             "Version": GLib.Variant("u", 3),
             "TextDirection": GLib.Variant("s", "ltr"),
             "Status": GLib.Variant("s", "normal"),
-            "IconThemePath": GLib.Variant("as", [str(ICON_DIR)]),
+            "IconThemePath": GLib.Variant("as", [path] if (path := icon_theme_path()) else []),
         }.get(name)
 
     def _on_call(self, _conn, _sender, _path, _iface, method, params, invocation):
@@ -245,6 +261,8 @@ class StatusNotifierItem:
         self.bus = bus
         self.on_activate = on_activate
         self.icon_name = icons.APP_SYMBOLIC
+        self.icon_theme_path = icon_theme_path()
+        self.icons_installed = not self.icon_theme_path
         self.tooltip_title = APP_NAME
         self.tooltip_body = ""
         self.label = ""
@@ -327,7 +345,7 @@ class StatusNotifierItem:
             "Status": GLib.Variant("s", self.status),
             "WindowId": GLib.Variant("i", 0),
             "IconName": GLib.Variant("s", self.icon_name),
-            "IconThemePath": GLib.Variant("s", str(ICON_DIR)),
+            "IconThemePath": GLib.Variant("s", self.icon_theme_path),
             "IconPixmap": GLib.Variant("a(iiay)", []),
             "OverlayIconName": GLib.Variant("s", ""),
             "OverlayIconPixmap": GLib.Variant("a(iiay)", []),
@@ -411,8 +429,10 @@ class TrayController:
                 text = f"{device.name}  —  {component_summary_text(device)}"
             if device.charging:
                 text += "  (charging)"
-            items.append(MenuItem(next_id, {"label": text.replace("_", "__"),
-                                            "icon-name": icons.for_kind(device.kind)},
+            props = {"label": text.replace("_", "__")}
+            if self.item.icons_installed:  # hosts resolve menu icons in the system theme only
+                props["icon-name"] = icons.for_kind(device.kind)
+            items.append(MenuItem(next_id, props,
                                   callback=lambda device_id=device.id: self.app.show_device(device_id)))
             next_id += 1
         if not devices:

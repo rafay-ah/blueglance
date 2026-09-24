@@ -94,6 +94,15 @@ def test_tray_registers_and_serves_menu():
         assert run_until(ctx, lambda: box)
         return box[0].unpack()
 
+    # Check the exact wire format: each child must be a "v" holding "(ia{sv}av)".
+    raw = []
+    watcher_bus.call(bus_name, "/MenuBar", "com.canonical.dbusmenu", "GetLayout",
+                     GLib.Variant("(iias)", (0, -1, [])), GLib.VariantType("(u(ia{sv}av))"),
+                     Gio.DBusCallFlags.NONE, 3000, None, lambda conn, res: raw.append(conn.call_finish(res)))
+    assert run_until(ctx, lambda: raw)
+    first_child = raw[0].get_child_value(1).get_child_value(2).get_child_value(0)
+    assert first_child.get_variant().get_type_string() == "(ia{sv}av)"
+
     revision, layout = call("/MenuBar", "com.canonical.dbusmenu", "GetLayout",
                             GLib.Variant("(iias)", (0, -1, [])), "(u(ia{sv}av))")
     root_id, root_props, children = layout

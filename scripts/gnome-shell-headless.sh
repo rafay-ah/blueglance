@@ -25,7 +25,9 @@ mkdir -p "$XDG_RUNTIME_DIR" "$XDG_DATA_HOME/gnome-shell/extensions" "$XDG_CONFIG
     "$HOME/Desktop/Projects"
 printf 'Remember to charge the mouse\n' > "$HOME/Desktop/notes.txt"  # something for Desktop Icons to show
 chmod 700 "$XDG_RUNTIME_DIR"
-cp -r "$ROOT/gnome-extension/$UUID" "$XDG_DATA_HOME/gnome-shell/extensions/"
+if [ -z "${NO_BLUEGLANCE_EXTENSION:-}" ]; then
+    cp -r "$ROOT/gnome-extension/$UUID" "$XDG_DATA_HOME/gnome-shell/extensions/"
+fi
 
 # A soft gradient wallpaper.
 WALL="$WORK/wallpaper.png"

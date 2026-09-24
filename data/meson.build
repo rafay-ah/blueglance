@@ -17,6 +17,13 @@ install_data(
   install_dir: datadir / 'icons' / 'hicolor' / 'symbolic' / 'apps',
 )
 
+# The UI's own symbolic icons, also in the system theme so tray menus
+# (which look icons up by name) can show them.
+install_subdir(
+  '..' / 'src' / 'blueglance' / 'icons' / 'hicolor' / 'scalable' / 'actions',
+  install_dir: datadir / 'icons' / 'hicolor' / 'scalable',
+)
+
 install_data(
   'blueglance-enable-bluez-battery',
   install_dir: pkglibexecdir,

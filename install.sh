@@ -43,6 +43,7 @@ if [ "$ACTION" = uninstall ]; then
     rm -f "$BIN" "$SHARE/applications/$APP_ID.desktop" "$SHARE/metainfo/$APP_ID.metainfo.xml" \
           "$SHARE/icons/hicolor/scalable/apps/$APP_ID.svg" \
           "$SHARE/icons/hicolor/symbolic/apps/$APP_ID-symbolic.svg" \
+          "$SHARE"/icons/hicolor/scalable/actions/blueglance-*-symbolic.svg \
           "${XDG_CONFIG_HOME:-$HOME/.config}/autostart/$APP_ID.desktop"
     [ -n "$AUTOSTART_DIR" ] && rm -f "$AUTOSTART_DIR/$APP_ID.desktop"
     say "BlueGlance removed. (Settings are kept in ~/.config/blueglance.)"
@@ -103,6 +104,8 @@ sed "s#^Exec=blueglance#Exec=$BIN#" "$ROOT/data/$APP_ID.desktop" > "$SHARE/appli
 install -m 644 "$ROOT/data/$APP_ID.metainfo.xml" "$SHARE/metainfo/"
 install -m 644 "$ROOT/data/icons/hicolor/scalable/apps/$APP_ID.svg" "$SHARE/icons/hicolor/scalable/apps/"
 install -m 644 "$ROOT/data/icons/hicolor/symbolic/apps/$APP_ID-symbolic.svg" "$SHARE/icons/hicolor/symbolic/apps/"
+mkdir -p "$SHARE/icons/hicolor/scalable/actions"
+install -m 644 "$ROOT"/src/blueglance/icons/hicolor/scalable/actions/blueglance-*.svg "$SHARE/icons/hicolor/scalable/actions/"
 if [ -n "$AUTOSTART_DIR" ]; then
     mkdir -p "$AUTOSTART_DIR"
     sed "s#@BINDIR@#$PREFIX/bin#" "$ROOT/data/autostart.desktop.in" > "$AUTOSTART_DIR/$APP_ID.desktop"
