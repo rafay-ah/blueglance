@@ -23,22 +23,7 @@ jobs:
           # Ubuntu 24.04 blocks unprivileged user namespaces, which bubblewrap needs.
           sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-      - name: Session bus for sandboxed image loaders
-        # appstreamcli decodes icons with glycin, which spawns its loaders through
-        # flatpak-spawn --sandbox and needs a session bus at $XDG_RUNTIME_DIR/bus.
-        run: |
-          RUNTIME_DIR="/run/user/$(id -u)"
-          sudo mkdir -p "$RUNTIME_DIR"
-          sudo chown "$(id -u):$(id -g)" "$RUNTIME_DIR"
-          chmod 700 "$RUNTIME_DIR"
-          dbus-daemon --session --address="unix:path=$RUNTIME_DIR/bus" --fork
-          echo "XDG_RUNTIME_DIR=$RUNTIME_DIR" >> "$GITHUB_ENV"
-          echo "DBUS_SESSION_BUS_ADDRESS=unix:path=$RUNTIME_DIR/bus" >> "$GITHUB_ENV"
       - name: Build
-        env:
-          # appstreamcli decodes our icon with glycin, whose nested loader sandbox
-          # can't start on CI runners; it's our own SVG, so decode it unsandboxed.
-          GLYCIN_DISABLE_SANDBOX: i-know-the-risks
         run: |
           FB="$RUNNER_TEMP/flatpak"
           flatpak-builder --user --install-deps-from=flathub --force-clean --disable-rofiles-fuse \
@@ -47,16 +32,6 @@ jobs:
           mkdir -p dist
           flatpak build-bundle "$FB/repo" dist/BlueGlance.flatpak io.github.rafay_ah.BlueGlance \
             --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo
-      - name: AppStream report
-        if: failure()
-        run: |
-          FB="$RUNNER_TEMP/flatpak"
-          flatpak run --user --filesystem="$RUNNER_TEMP" --command=appstreamcli org.gnome.Sdk//50 \
-            compose --print-report=full --prefix=/ --origin=debug --result-root="$RUNNER_TEMP/as-out" \
-            --components=io.github.rafay_ah.BlueGlance "$FB/build/files" || true
-          flatpak run --user --filesystem="$RUNNER_TEMP" --command=appstreamcli org.gnome.Sdk//50 \
-            validate --no-net --explain "$FB/build/files/share/metainfo/io.github.rafay_ah.BlueGlance.metainfo.xml" || true
-          flatpak run --user --command=appstreamcli org.gnome.Sdk//50 --version || true
       - name: Smoke test
         run: |
           flatpak install --user -y --noninteractive dist/BlueGlance.flatpak

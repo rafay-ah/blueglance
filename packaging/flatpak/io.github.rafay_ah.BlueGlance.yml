@@ -3,6 +3,9 @@ runtime: org.gnome.Platform
 runtime-version: '50'
 sdk: org.gnome.Sdk
 command: blueglance
+# The GitHub-built bundle skips AppStream compose: the SDK's image decoder
+# (glycin) can't start its sandbox on CI runners. Flathub composes on its own.
+appstream-compose: false
 finish-args:
   - --share=ipc
   - --socket=wayland
