@@ -270,7 +270,7 @@ Contributions are welcome. Please open an issue first for larger changes.
   [PyGObject](https://pygobject.gnome.org), [UPower](https://upower.freedesktop.org) and
   [BlueZ](https://www.bluez.org).
 
-AirPods and Beats are trademarks of Apple Inc. BlueGlance is not affiliated with Apple.
+AirPods and Beats are trademarks of Apple Inc. BlueGlance is not affiliated with Apple. 
 
 ## License
 
