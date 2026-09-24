@@ -31,6 +31,7 @@ modules:
   - name: gtk4-layer-shell
     buildsystem: meson
     config-opts:
+      - --libdir=lib
       - -Dexamples=false
       - -Ddocs=false
       - -Dtests=false
