@@ -13,6 +13,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(ROOT, "src"))
 os.environ.setdefault("BLUEGLANCE_DEMO", "1")
 os.environ.setdefault("BLUEGLANCE_DEMO_STATIC", "1")
+os.environ.setdefault("BLUEGLANCE_SCREENSHOT", "1")
 os.environ.setdefault("GTK_A11Y", "none")
 
 import gi

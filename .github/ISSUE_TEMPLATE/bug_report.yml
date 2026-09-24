@@ -1,0 +1,53 @@
+name: Bug report
+description: Something doesn't work, a device is missing, or a battery level is wrong
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead? Screenshots help.
+    validations:
+      required: true
+  - type: input
+    id: distro
+    attributes:
+      label: Distribution and version
+      placeholder: Ubuntu 24.04
+    validations:
+      required: true
+  - type: input
+    id: desktop
+    attributes:
+      label: Desktop and session
+      description: "For example: GNOME 46 on Wayland, KDE Plasma 6.3 on Wayland, Cinnamon on X11"
+    validations:
+      required: true
+  - type: dropdown
+    id: install
+    attributes:
+      label: How did you install BlueGlance?
+      options: [.deb, Flatpak, install.sh, AUR / PKGBUILD, From source]
+    validations:
+      required: true
+  - type: input
+    id: devices
+    attributes:
+      label: Affected device(s)
+      placeholder: AirPods Pro 2, Logitech MX Master 3S (Bluetooth)
+  - type: textarea
+    id: versions
+    attributes:
+      label: Versions
+      description: Output of these commands.
+      value: |
+        blueglance --version:
+        bluetoothctl --version:
+        upower --version:
+      render: text
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug log
+      description: Quit BlueGlance, then run `blueglance --debug` in a terminal, reproduce the problem and paste the output. For devices, `upower --dump` also helps.
+      render: text

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+
 from gi.repository import Adw, Gio, GLib, Gtk
 
 from .. import APP_NAME, icons
@@ -154,10 +156,10 @@ class MainWindow(Adw.ApplicationWindow):
         self._fill(self.recent_section, recent, threshold, animate)
 
         count = len(connected) + len(nobattery)
-        if count == 0:
-            self.title_widget.set_subtitle("")
-        else:
-            self.title_widget.set_subtitle(f"{count} device{'s' if count != 1 else ''} connected")
+        subtitle = f"{count} device{'s' if count != 1 else ''} connected" if count else ""
+        if self.app.demo and os.environ.get("BLUEGLANCE_SCREENSHOT") != "1":
+            subtitle = "Demo mode · sample devices"
+        self.title_widget.set_subtitle(subtitle)
 
         if connected or nobattery or recent:
             self.stack.set_visible_child_name("list")
